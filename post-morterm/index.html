@@ -7,17 +7,28 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            --primary-bg: #021640;
-            --primary-font: #021640;
-            --card-bg: #FFFFFF;
-            --body-bg: #f4f6f9;
+            /* --- NEW PALETTE --- 
+               Blue: #8BA8E3
+               Beige: #F3F4E3
+               Coral: #F58F79
+               GreyBlue: #DBDFEC
+               Pink: #FFEAE5
+            */
+
+            --primary-bg: #8BA8E3;      /* Main Blue for buttons/icons */
+            --primary-font: #5A6B8C;    /* Darkened version of palette blue for text readability, or neutral dark */
+            --header-text: #8BA8E3;     /* Colorful headers */
+            
+            --card-bg: #FFFFFF;         /* Keep white for contrast/cleanliness */
+            --body-bg: #F3F4E3;         /* Soft Beige Background */
             --border-radius: 12px;
             
             /* Highlight Colors */
-            --highlight-row-bg: #fff9c4; /* Light Yellow for table row */
-            --highlight-chart: #FFD700;  /* Gold/Yellow for charts */
-            --dimmed-chart: #CFD8DC;     /* Grey for non-selected items */
-            --filter-tag-bg: #e3f2fd;    /* Blue tag for active filters */
+            --highlight-row-bg: #FFEAE5; /* Light Pink for active table rows */
+            --highlight-chart: #F58F79;  /* Coral for selected chart items */
+            --dimmed-chart: #DBDFEC;     /* GreyBlue for non-selected items */
+            --filter-tag-bg: #DBDFEC;    /* GreyBlue for filter tags */
+            --border-color: #DBDFEC;
         }
 
         body {
@@ -26,38 +37,43 @@
             margin: 0;
             padding: 20px;
             padding-bottom: 100px; /* Space for floating drawer */
-            color: var(--primary-font);
+            color: #444; /* Standard Dark Grey for readability */
         }
 
         /* --- Header --- */
         .main-header {
             background-color: var(--card-bg); padding: 20px; border-radius: var(--border-radius);
             margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(139, 168, 227, 0.15); /* Soft Blue shadow */
         }
-        .main-header h1 { margin: 0; font-size: 1.8em; }
-        .main-header p { margin: 5px 0 0; color: #666; font-size: 0.9em; }
+        .main-header h1 { margin: 0; font-size: 1.8em; color: var(--header-text); }
+        .main-header p { margin: 5px 0 0; color: #888; font-size: 0.9em; }
 
         /* --- KPI Cards --- */
         .kpi-container { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
         .kpi-card {
             background-color: var(--card-bg); border-radius: var(--border-radius);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); padding: 16px; flex: 1 1 150px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); padding: 16px; flex: 1 1 150px;
             display: flex; flex-direction: column; justify-content: space-between; min-width: 140px;
             cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; 
+            border: 1px solid transparent;
         }
-        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); } 
+        .kpi-card:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 8px 16px rgba(139, 168, 227, 0.2); 
+            border-color: var(--primary-bg);
+        } 
 
-        .kpi-card h3 { margin: 0 0 10px 0; font-size: 0.85em; text-transform: uppercase; color: #666; }
+        .kpi-card h3 { margin: 0 0 10px 0; font-size: 0.85em; text-transform: uppercase; color: #999; letter-spacing: 0.5px;}
         .kpi-card .value-container { display: flex; justify-content: space-between; align-items: flex-end; }
-        .kpi-card .result { font-size: 1.8em; font-weight: 700; color: var(--primary-font); }
-        .kpi-card .icon { font-size: 1.5em; color: var(--primary-bg); opacity: 0.2; }
+        .kpi-card .result { font-size: 1.8em; font-weight: 700; color: #444; }
+        .kpi-card .icon { font-size: 1.5em; color: var(--primary-bg); opacity: 0.8; }
 
         /* --- Charts Grid --- */
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
         .chart-card {
             background-color: var(--card-bg); padding: 16px; border-radius: var(--border-radius);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); min-height: 350px; 
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); min-height: 350px; 
         }
         .span-2 { grid-column: span 2; }
         .span-1 { grid-column: span 1; }
@@ -66,7 +82,7 @@
         .case-drawer {
             position: fixed; bottom: 0; left: 0; width: 100%; height: 450px;
             background-color: white;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
             border-top-left-radius: 16px; border-top-right-radius: 16px;
             z-index: 900;
             transform: translateY(100%); /* Hidden by default */
@@ -77,17 +93,17 @@
         .case-drawer.open { transform: translateY(0); }
 
         .drawer-header {
-            padding: 15px 24px; border-bottom: 1px solid #eee;
+            padding: 15px 24px; border-bottom: 1px solid var(--border-color);
             display: flex; justify-content: space-between; align-items: center;
-            background-color: #f8f9fa; border-top-left-radius: 16px; border-top-right-radius: 16px;
+            background-color: #FAFAFA; border-top-left-radius: 16px; border-top-right-radius: 16px;
         }
         
         .filter-tags { display: flex; gap: 10px; align-items: center; }
         .filter-badge {
-            background-color: var(--filter-tag-bg); color: var(--primary-font);
+            background-color: var(--filter-tag-bg); color: #555;
             padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600;
             display: flex; align-items: center; gap: 6px;
-            border: 1px solid #bbdefb;
+            border: 1px solid #cdd1e0;
         }
 
         .drawer-content { flex-grow: 1; overflow-y: auto; padding: 0; }
@@ -98,42 +114,43 @@
             background-color: var(--primary-bg); color: white;
             border: none; border-radius: 50px; padding: 14px 28px;
             font-size: 1em; font-weight: 600;
-            box-shadow: 0 4px 12px rgba(2, 22, 64, 0.3);
+            box-shadow: 0 4px 12px rgba(139, 168, 227, 0.5);
             cursor: pointer; z-index: 950;
             display: flex; align-items: center; gap: 10px;
             transition: all 0.2s;
         }
-        .drawer-toggle-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(2, 22, 64, 0.4); }
+        .drawer-toggle-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(139, 168, 227, 0.6); background-color: #7a98d3; }
         .drawer-toggle-btn.hidden { display: none; }
 
         /* Table Styling */
         table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-        th { text-align: left; padding: 14px 24px; background-color: white; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #eee; font-weight: 600; color: #555; }
-        td { padding: 12px 24px; border-bottom: 1px solid #eee; color: #333; vertical-align: top; }
+        th { text-align: left; padding: 14px 24px; background-color: white; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--header-text); }
+        td { padding: 12px 24px; border-bottom: 1px solid var(--border-color); color: #555; vertical-align: top; }
         
         /* Adjusted widths for new columns */
         td:nth-child(1) { width: 130px; white-space: nowrap; } /* ID */
         td:nth-child(2) { width: 120px; white-space: nowrap; font-weight: 500; color: #444; } /* Market */
 
         tbody tr { cursor: pointer; transition: background-color 0.1s; }
-        tbody tr:hover { background-color: #f1f5f9; }
+        tbody tr:hover { background-color: #f9f9f9; }
         
         /* Active Row Style */
         tbody tr.active-row { 
             background-color: var(--highlight-row-bg); 
             border-left: 4px solid var(--highlight-chart); 
         }
-        tbody tr.active-row td { font-weight: 500; }
+        tbody tr.active-row td { font-weight: 500; color: #333; }
 
-        a.case-link { color: #0066CC; text-decoration: none; font-weight: bold; }
-        a.case-link:hover { text-decoration: underline; }
+        a.case-link { color: var(--primary-bg); text-decoration: none; font-weight: bold; }
+        a.case-link:hover { text-decoration: underline; color: var(--highlight-chart); }
 
         .reset-btn {
-            background: none; border: 1px solid #ddd; padding: 6px 12px;
+            background: none; border: 1px solid var(--border-color); padding: 6px 12px;
             border-radius: 6px; cursor: pointer; font-size: 0.85em;
-            display: flex; align-items: center; gap: 6px; color: #555;
+            display: flex; align-items: center; gap: 6px; color: #666;
+            background-color: white;
         }
-        .reset-btn:hover { background-color: #eee; }
+        .reset-btn:hover { background-color: var(--body-bg); color: var(--primary-bg); border-color: var(--primary-bg); }
 
         /* Responsive */
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } .span-2 { grid-column: span 2; } }
@@ -182,7 +199,7 @@
     <div id="case-drawer" class="case-drawer">
         <div class="drawer-header">
             <div class="filter-tags">
-                <h3 style="margin:0;">Case List</h3>
+                <h3 style="margin:0; color: var(--header-text);">Case List</h3>
                 <span id="filter-badge" class="filter-badge" style="display:none;">
                     <i class="fa-solid fa-filter"></i> <span id="filter-text"></span>
                 </span>
@@ -209,11 +226,12 @@
 
 <script>
     // --- Configuration ---
+    // Updated Strict Palette
     const COLORS = {
-        DEFAULT_PALETTE: ['#021640', '#0066CC', '#0099CC', '#4572C4', '#558ED5', '#1F4E79'],
-        SINGLE_BAR: '#021640', 
-        HIGHLIGHT: '#FFD700',
-        DIMMED: '#E0E0E0'
+        DEFAULT_PALETTE: ['#8BA8E3', '#F58F79', '#DBDFEC', '#9AB6ED', '#FAB0A0'], // Extended slightly with tints for multi-data charts if needed
+        SINGLE_BAR: '#8BA8E3',  // Primary Blue
+        HIGHLIGHT: '#F58F79',   // Coral
+        DIMMED: '#DBDFEC'       // GreyBlue
     };
     const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     
@@ -298,26 +316,32 @@
     // --- INTERACTION: CHARTS -> TABLE ---
     
     function handleChartClick(chartType, selectedValue) {
-        if (selectedRowId) {
-            selectedRowId = null;
-            document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
-        }
+      if (selectedRowId) {
+          selectedRowId = null;
+          document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
+      }
 
-        if (currentFilter && currentFilter.type === chartType && currentFilter.value === selectedValue) {
-            currentFilter = null;
-        } else {
-            currentFilter = { type: chartType, value: selectedValue };
-        }
+      // FIX: If selectedValue is null/undefined, reset the filter completely
+      if (selectedValue === null || selectedValue === undefined) {
+          currentFilter = null;
+      } 
+      // Existing toggle logic
+      else if (currentFilter && currentFilter.type === chartType && currentFilter.value === selectedValue) {
+          currentFilter = null;
+      } else {
+          currentFilter = { type: chartType, value: selectedValue };
+      }
 
-        const filteredData = filterData(fullTableData, currentFilter);
-        renderTable(filteredData);
-        updateFilterBadge();
+      const filteredData = filterData(fullTableData, currentFilter);
+      renderTable(filteredData);
+      updateFilterBadge();
 
-        const drawer = document.getElementById('case-drawer');
-        if (!drawer.classList.contains('open') && currentFilter) {
-             toggleDrawer();
-        }
-    }
+      // Only open drawer if we actually have a filter applied
+      const drawer = document.getElementById('case-drawer');
+      if (!drawer.classList.contains('open') && currentFilter) {
+          toggleDrawer();
+      }
+  }
 
     function filterData(data, filter) {
         if (!filter) return data; 
@@ -452,7 +476,7 @@
             colors: [COLORS.SINGLE_BAR],
             plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '70%', distributed: true } },
             xaxis: { categories: data.categories },
-            title: { text: 'Cases by Category', style: { color: '#021640', fontSize: '16px', fontWeight: 600 } },
+            title: { text: 'Cases by Category', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
             legend: { show: false }
         };
         const chart = new ApexCharts(document.querySelector("#chartCategory"), options);
@@ -477,7 +501,7 @@
                 }
             },
             colors: COLORS.DEFAULT_PALETTE,
-            title: { text: 'Case Status', style: { color: '#021640', fontSize: '16px', fontWeight: 600 } },
+            title: { text: 'Case Status', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
             plotOptions: { pie: { donut: { size: '65%' } } }, legend: { position: 'bottom' }
         };
         const chart = new ApexCharts(document.querySelector("#chartStatus"), options);
@@ -502,7 +526,7 @@
                 }
             },
             colors: COLORS.DEFAULT_PALETTE,
-            title: { text: 'Incoming Sources', style: { color: '#021640', fontSize: '16px', fontWeight: 600 } },
+            title: { text: 'Incoming Sources', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
             legend: { position: 'bottom' }
         };
         const chart = new ApexCharts(document.querySelector("#chartSource"), options);
@@ -525,7 +549,7 @@
                 }
             },
             colors: COLORS.DEFAULT_PALETTE,
-            title: { text: 'Cases by Market (Trend)', style: { color: '#021640', fontSize: '16px', fontWeight: 600 } },
+            title: { text: 'Cases by Market (Trend)', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
             stroke: { curve: 'smooth', width: 2 },
             fill: { type: 'gradient', gradient: { opacityFrom: 0.6, opacityTo: 0.1 } },
             xaxis: { categories: data.categories },
@@ -584,8 +608,11 @@
             },
             colors: [COLORS.SINGLE_BAR],
             plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '50%' } },
-            xaxis: { categories: data.categories },
-            title: { text: 'Top Repeated Property IDs', style: { color: '#021640', fontSize: '16px', fontWeight: 600 } },
+            xaxis: { 
+                type: 'category',
+                categories: data.categories 
+            },
+            title: { text: 'Top Repeated Property IDs', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
         };
         const chart = new ApexCharts(document.querySelector("#chartRepeatedProps"), options);
         chart.render();

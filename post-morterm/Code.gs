@@ -142,7 +142,13 @@ function getDashboardData() {
       const market = row[1] || 'Unknown';
       const sourceRaw = row[2] ? row[2].toString() : 'Unknown';
       // Ensure PropertyID is a string for consistent filtering
-      const propertyId = row[5] ? row[5].toString() : "Unknown"; 
+      // const propertyId = row[5] ? row[5].toString() : "Unknown"; 
+      const cellValue = row[5];
+      const rawProp = row[5];
+      // Check specifically for null/undefined/empty string, but allow 0
+      const propertyId = (rawProp !== null && rawProp !== undefined && rawProp !== "") 
+          ? rawProp.toString().trim() // Trim removes accidental spaces like "123 "
+          : "Unknown";
       const reviewDateStr = row[6];
       const summary = row[7] || "";
       const category = row[8] || 'Uncategorized';
