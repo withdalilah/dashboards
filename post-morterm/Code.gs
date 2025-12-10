@@ -141,7 +141,8 @@ function getDashboardData() {
       const caseIdText = row[0];
       const market = row[1] || 'Unknown';
       const sourceRaw = row[2] ? row[2].toString() : 'Unknown';
-      const propertyId = row[5] || "Unknown";
+      // Ensure PropertyID is a string for consistent filtering
+      const propertyId = row[5] ? row[5].toString() : "Unknown"; 
       const reviewDateStr = row[6];
       const summary = row[7] || "";
       const category = row[8] || 'Uncategorized';

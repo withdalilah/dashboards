@@ -44,9 +44,9 @@
             background-color: var(--card-bg); border-radius: var(--border-radius);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); padding: 16px; flex: 1 1 150px;
             display: flex; flex-direction: column; justify-content: space-between; min-width: 140px;
-            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; /* Added cursor and transition */
+            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; 
         }
-        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); } /* Added hover effect */
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); } 
 
         .kpi-card h3 { margin: 0 0 10px 0; font-size: 0.85em; text-transform: uppercase; color: #666; }
         .kpi-card .value-container { display: flex; justify-content: space-between; align-items: flex-end; }
@@ -111,7 +111,9 @@
         th { text-align: left; padding: 14px 24px; background-color: white; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #eee; font-weight: 600; color: #555; }
         td { padding: 12px 24px; border-bottom: 1px solid #eee; color: #333; vertical-align: top; }
         
-        td:first-child { width: 140px; white-space: nowrap; }
+        /* Adjusted widths for new columns */
+        td:nth-child(1) { width: 130px; white-space: nowrap; } /* ID */
+        td:nth-child(2) { width: 120px; white-space: nowrap; font-weight: 500; color: #444; } /* Market */
 
         tbody tr { cursor: pointer; transition: background-color 0.1s; }
         tbody tr:hover { background-color: #f1f5f9; }
@@ -195,6 +197,7 @@
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Market</th>
                         <th>Summary</th>
                     </tr>
                 </thead>
@@ -237,7 +240,7 @@
         document.getElementById('loader-wrapper').style.display = 'none';
         document.getElementById('dashboard-content').style.visibility = 'visible';
         
-        dashboardStats = data.cards; // Store for access in handleCardClick
+        dashboardStats = data.cards; 
         renderKpiCards(data.cards);
         chartDataStore = data.charts;
         fullTableData = data.rawTableData;
@@ -255,7 +258,6 @@
 
     // --- INTERACTION: CARDS ---
     function handleCardClick(type) {
-        // Clear previous selection
         selectedRowId = null;
         document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
 
@@ -263,7 +265,7 @@
         let filterType = type;
 
         if (type === 'total') {
-            currentFilter = null; // Reset
+            currentFilter = null; 
         } else if (type === 'ongoing') {
             filterValue = 'Ongoing';
         } else if (type === 'month') {
@@ -324,17 +326,16 @@
             if (filter.type === 'category') return row.category === filter.value;
             if (filter.type === 'status') return row.status === filter.value;
             if (filter.type === 'market') return row.market === filter.value;
-            // Fuzzy match for Source
             if (filter.type === 'source') return row.source.includes(filter.value);
             
-            // New Filters
             if (filter.type === 'ongoing') {
                 const s = row.status.toLowerCase();
                 return s === 'ongoing' || s === 'open';
             }
             if (filter.type === 'month') return row.isThisMonth;
             if (filter.type === 'removed') return row.isRemoved;
-            if (filter.type === 'property') return row.propertyId === filter.value;
+            // Use String conversion to ensure safe comparison for Property IDs
+            if (filter.type === 'property') return String(row.propertyId) === String(filter.value);
             
             return true;
         });
@@ -375,7 +376,6 @@
         updateFilterBadge();
         renderTable(fullTableData);
         
-        // Reset Chart Colors
         chartCategory.updateOptions({ colors: [COLORS.SINGLE_BAR] });
         chartStatus.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
         chartSource.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
@@ -392,7 +392,7 @@
         countLabel.innerText = `(${rows.length} cases)`;
 
         if (rows.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:20px; color:#888;">No cases match this filter.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#888;">No cases match this filter.</td></tr>';
             return;
         }
 
@@ -406,7 +406,8 @@
                 ? `<a href="${row.url}" target="_blank" class="case-link" onclick="event.stopPropagation();">${row.id} <i class="fa-solid fa-external-link-alt" style="font-size:0.7em"></i></a>`
                 : `<strong>${row.id}</strong>`;
 
-            tr.innerHTML = `<td>${linkHtml}</td><td>${truncateText(row.summary, 120)}</td>`;
+            // Updated to show Market Column
+            tr.innerHTML = `<td>${linkHtml}</td><td>${row.market}</td><td>${truncateText(row.summary, 120)}</td>`;
             
             tr.addEventListener('click', () => {
                 if (selectedRowId === row.id) {
@@ -529,32 +530,31 @@
             fill: { type: 'gradient', gradient: { opacityFrom: 0.6, opacityTo: 0.1 } },
             xaxis: { categories: data.categories },
             legend: { position: 'top', horizontalAlign: 'right' },
-            // NEW: Custom Tooltip to show Total
+            // NEW: Custom Tooltip to show Breakdown + Monthly Total (Corrected)
             tooltip: {
                 custom: function({series, seriesIndex, dataPointIndex, w}) {
                     const month = w.globals.labels[dataPointIndex];
                     let total = 0;
-                    // Calculate sum of all series at this x-index
-                    series.forEach(s => {
-                        total += (s[dataPointIndex] || 0);
-                    });
-
-                    // Build simple HTML structure
+                    
                     let html = '<div style="background:white; padding:8px 10px; border:1px solid #ccc; font-size:12px;">';
                     html += `<div><strong>${month}</strong></div>`;
-                    
-                    // List all non-zero series
+                    html += `<div style="margin-top:4px;">`;
+
+                    // Sum and List series
                     w.config.series.forEach((s, i) => {
-                        if (s.data[dataPointIndex] > 0) {
-                            html += `<div style="display:flex; align-items:center; gap:5px; margin-top:4px;">`;
+                        const val = s.data[dataPointIndex] || 0;
+                        total += val;
+                        if (val > 0) {
+                            html += `<div style="display:flex; align-items:center; gap:5px;">`;
                             html += `<span style="width:8px; height:8px; border-radius:50%; background-color:${w.config.colors[i]}"></span>`;
-                            html += `<span>${s.name}: <strong>${s.data[dataPointIndex]}</strong></span></div>`;
+                            html += `<span>${s.name}: <strong>${val}</strong></span></div>`;
                         }
                     });
 
-                    // Add Total Line
+                    html += `</div>`;
+                    // Total Line
                     html += `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #eee; font-weight:bold;">`;
-                    html += `Total: ${total}</div></div>`;
+                    html += `Monthly Total: ${total}</div></div>`;
                     
                     return html;
                 }
@@ -570,7 +570,6 @@
             series: data.series,
             chart: { 
                 type: 'bar', height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY,
-                // NEW: Enable Click Event for Drill-down
                 events: {
                     dataPointSelection: (e, chart, config) => {
                         const idx = config.selectedDataPoints[0][0];
