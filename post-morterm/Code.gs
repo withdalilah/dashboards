@@ -198,7 +198,7 @@ function getDashboardData() {
     });
 
     // --- Prepare Data for Charts ---
-    // Updated: Filter out "Unknown" properties before slicing
+    // Filter out "Unknown" properties before slicing
     const repeatedProperties = Object.entries(propertyCounts)
       .filter(([pid, count]) => pid !== 'Unknown' && count >= 2)
       .sort((a, b) => b[1] - a[1])
