@@ -44,7 +44,10 @@
             background-color: var(--card-bg); border-radius: var(--border-radius);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); padding: 16px; flex: 1 1 150px;
             display: flex; flex-direction: column; justify-content: space-between; min-width: 140px;
+            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; /* Added cursor and transition */
         }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); } /* Added hover effect */
+
         .kpi-card h3 { margin: 0 0 10px 0; font-size: 0.85em; text-transform: uppercase; color: #666; }
         .kpi-card .value-container { display: flex; justify-content: space-between; align-items: flex-end; }
         .kpi-card .result { font-size: 1.8em; font-weight: 700; color: var(--primary-font); }
@@ -153,12 +156,12 @@
         </div>
 
         <div class="kpi-container">
-            <div class="kpi-card"><h3>Total Cases</h3><div class="value-container"><span id="total-cases" class="result">...</span><i class="fa-solid fa-briefcase icon"></i></div></div>
-            <div class="kpi-card"><h3>Ongoing</h3><div class="value-container"><span id="ongoing-cases" class="result">...</span><i class="fa-solid fa-spinner icon"></i></div></div>
-            <div class="kpi-card"><h3>This Month</h3><div class="value-container"><span id="cases-this-month" class="result">...</span><i class="fa-solid fa-calendar-day icon"></i></div></div>
-            <div class="kpi-card"><h3>Top Category</h3><div class="value-container"><span id="top-category" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-tags icon"></i></div></div>
-            <div class="kpi-card"><h3>Top Market</h3><div class="value-container"><span id="top-market" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-globe icon"></i></div></div>
-            <div class="kpi-card"><h3>Review Removed</h3><div class="value-container"><span id="review-removed" class="result">...</span><i class="fa-solid fa-eraser icon"></i></div></div>
+            <div class="kpi-card" onclick="handleCardClick('total')"><h3>Total Cases</h3><div class="value-container"><span id="total-cases" class="result">...</span><i class="fa-solid fa-briefcase icon"></i></div></div>
+            <div class="kpi-card" onclick="handleCardClick('ongoing')"><h3>Ongoing</h3><div class="value-container"><span id="ongoing-cases" class="result">...</span><i class="fa-solid fa-spinner icon"></i></div></div>
+            <div class="kpi-card" onclick="handleCardClick('month')"><h3>This Month</h3><div class="value-container"><span id="cases-this-month" class="result">...</span><i class="fa-solid fa-calendar-day icon"></i></div></div>
+            <div class="kpi-card" onclick="handleCardClick('top-category')"><h3>Top Category</h3><div class="value-container"><span id="top-category" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-tags icon"></i></div></div>
+            <div class="kpi-card" onclick="handleCardClick('top-market')"><h3>Top Market</h3><div class="value-container"><span id="top-market" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-globe icon"></i></div></div>
+            <div class="kpi-card" onclick="handleCardClick('removed')"><h3>Review Removed</h3><div class="value-container"><span id="review-removed" class="result">...</span><i class="fa-solid fa-eraser icon"></i></div></div>
         </div>
         
         <div class="dashboard-grid">
@@ -215,8 +218,9 @@
     let chartMarket, chartStatus, chartCategory, chartSource, chartRepeated;
     let chartDataStore = {};
     let fullTableData = []; // Stores all rows
-    let currentFilter = null; // Stores { type: 'category', value: 'Cleanliness' }
+    let currentFilter = null; 
     let selectedRowId = null;
+    let dashboardStats = {}; // Store stats for KPI click logic
 
     document.addEventListener('DOMContentLoaded', function() {
         google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData();
@@ -233,6 +237,7 @@
         document.getElementById('loader-wrapper').style.display = 'none';
         document.getElementById('dashboard-content').style.visibility = 'visible';
         
+        dashboardStats = data.cards; // Store for access in handleCardClick
         renderKpiCards(data.cards);
         chartDataStore = data.charts;
         fullTableData = data.rawTableData;
@@ -248,31 +253,64 @@
         renderTable(fullTableData);
     }
 
-    // --- FILTER LOGIC: CHART -> TABLE ---
+    // --- INTERACTION: CARDS ---
+    function handleCardClick(type) {
+        // Clear previous selection
+        selectedRowId = null;
+        document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
+
+        let filterValue = null;
+        let filterType = type;
+
+        if (type === 'total') {
+            currentFilter = null; // Reset
+        } else if (type === 'ongoing') {
+            filterValue = 'Ongoing';
+        } else if (type === 'month') {
+            filterValue = 'Current Month';
+        } else if (type === 'removed') {
+            filterValue = 'Yes';
+        } else if (type === 'top-category') {
+            filterType = 'category';
+            filterValue = dashboardStats.topCategory;
+            if (filterValue === 'N/A') return;
+        } else if (type === 'top-market') {
+            filterType = 'market';
+            filterValue = dashboardStats.topMarket;
+            if (filterValue === 'N/A') return;
+        }
+
+        if (type === 'total') {
+            resetDashboard();
+        } else {
+            currentFilter = { type: filterType, value: filterValue };
+            const filteredData = filterData(fullTableData, currentFilter);
+            renderTable(filteredData);
+            updateFilterBadge();
+            
+            const drawer = document.getElementById('case-drawer');
+            if (!drawer.classList.contains('open')) toggleDrawer();
+        }
+    }
+
+    // --- INTERACTION: CHARTS -> TABLE ---
     
     function handleChartClick(chartType, selectedValue) {
-        // 1. Clear Row Selection if exists
         if (selectedRowId) {
             selectedRowId = null;
             document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
-            // We do NOT reset charts here because the user just clicked a chart to filter
         }
 
-        // 2. Toggle Filter
         if (currentFilter && currentFilter.type === chartType && currentFilter.value === selectedValue) {
-            // Clicked same item -> Remove Filter
             currentFilter = null;
         } else {
-            // New Filter
             currentFilter = { type: chartType, value: selectedValue };
         }
 
-        // 3. Apply Filter to Data
         const filteredData = filterData(fullTableData, currentFilter);
         renderTable(filteredData);
         updateFilterBadge();
 
-        // 4. Auto-open drawer to show results? (Optional, user might like it)
         const drawer = document.getElementById('case-drawer');
         if (!drawer.classList.contains('open') && currentFilter) {
              toggleDrawer();
@@ -280,16 +318,24 @@
     }
 
     function filterData(data, filter) {
-        if (!filter) return data; // No filter, return all
+        if (!filter) return data; 
 
         return data.filter(row => {
             if (filter.type === 'category') return row.category === filter.value;
             if (filter.type === 'status') return row.status === filter.value;
             if (filter.type === 'market') return row.market === filter.value;
-            if (filter.type === 'source') {
-                // Fuzzy match for Source because of "Google, Trustpilot" scenarios
-                return row.source.includes(filter.value);
+            // Fuzzy match for Source
+            if (filter.type === 'source') return row.source.includes(filter.value);
+            
+            // New Filters
+            if (filter.type === 'ongoing') {
+                const s = row.status.toLowerCase();
+                return s === 'ongoing' || s === 'open';
             }
+            if (filter.type === 'month') return row.isThisMonth;
+            if (filter.type === 'removed') return row.isRemoved;
+            if (filter.type === 'property') return row.propertyId === filter.value;
+            
             return true;
         });
     }
@@ -309,23 +355,16 @@
     // --- HIGHLIGHT LOGIC: TABLE -> CHART ---
 
     function highlightAllCharts(row) {
-        // Only highlight if no filter is currently locking the view
-        // Actually, we can highlight even if filtered, but let's prioritize the user intent.
-        
-        // Category
         const catColors = chartDataStore.casesByCategory.categories.map(cat => cat === row.category ? COLORS.HIGHLIGHT : COLORS.SINGLE_BAR);
         chartCategory.updateOptions({ colors: catColors });
 
-        // Status
         const statColors = chartDataStore.caseStatus.labels.map(lbl => lbl === row.status ? COLORS.HIGHLIGHT : COLORS.DIMMED);
         chartStatus.updateOptions({ colors: statColors });
 
-        // Source
         const rowSources = row.source.split(',').map(s => s.trim());
         const sourceColors = chartDataStore.casesBySource.labels.map(lbl => rowSources.includes(lbl) ? COLORS.HIGHLIGHT : COLORS.DIMMED);
         chartSource.updateOptions({ colors: sourceColors });
 
-        // Market
         const marketColors = chartDataStore.marketCasesByMonth.series.map(s => s.name === row.market ? COLORS.HIGHLIGHT : COLORS.DIMMED);
         chartMarket.updateOptions({ colors: marketColors });
     }
@@ -342,7 +381,6 @@
         chartSource.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
         chartMarket.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
     }
-
 
     // --- UI Rendering ---
 
@@ -372,7 +410,7 @@
             
             tr.addEventListener('click', () => {
                 if (selectedRowId === row.id) {
-                    resetDashboard(); // Click again to reset
+                    resetDashboard(); 
                 } else {
                     selectedRowId = row.id;
                     document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
@@ -391,20 +429,7 @@
         if (isOpen) btn.classList.add('hidden'); else btn.classList.remove('hidden');
     }
 
-    // --- Chart Configs with Click Events ---
-
-    function getCommonOptions() {
-        return {
-            fontFamily: FONT_FAMILY,
-            toolbar: { show: false },
-            // IMPORTANT: This enables the click events
-            events: {
-                dataPointSelection: function(event, chartContext, config) {
-                    // Prevent default selection behavior if needed, but we use it to trigger filter
-                }
-            }
-        };
-    }
+    // --- Chart Configs ---
 
     function renderCategoryChart(data) {
         const options = {
@@ -414,12 +439,10 @@
                 events: {
                     dataPointSelection: (e, chart, config) => {
                         const idx = config.selectedDataPoints[0][0];
-                        if (idx === undefined || idx === -1) {
-                             // Deselection
-                             handleChartClick('category', null);
+                        if (idx !== undefined && idx !== -1) {
+                             handleChartClick('category', config.w.config.xaxis.categories[idx]);
                         } else {
-                             const label = config.w.config.xaxis.categories[idx];
-                             handleChartClick('category', label);
+                             handleChartClick('category', null);
                         }
                     }
                 },
@@ -444,11 +467,10 @@
                 events: {
                     dataPointSelection: (e, chart, config) => {
                         const idx = config.selectedDataPoints[0][0];
-                         if (idx === undefined || idx === -1) {
-                             handleChartClick('status', null);
+                        if (idx !== undefined && idx !== -1) {
+                             handleChartClick('status', config.w.config.labels[idx]);
                         } else {
-                             const label = config.w.config.labels[idx];
-                             handleChartClick('status', label);
+                             handleChartClick('status', null);
                         }
                     }
                 }
@@ -470,11 +492,10 @@
                 events: {
                     dataPointSelection: (e, chart, config) => {
                         const idx = config.selectedDataPoints[0][0];
-                        if (idx === undefined || idx === -1) {
-                             handleChartClick('source', null);
+                        if (idx !== undefined && idx !== -1) {
+                             handleChartClick('source', config.w.config.labels[idx]);
                         } else {
-                             const label = config.w.config.labels[idx];
-                             handleChartClick('source', label);
+                             handleChartClick('source', null);
                         }
                     }
                 }
@@ -489,15 +510,11 @@
     }
 
     function renderMarketChart(data) {
-        // Area charts are trickier for clicks. We usually click markers.
-        // ApexCharts 'markerClick' is what we often need, but dataPointSelection works for series too sometimes.
-        // Simplified: We filter by the clicked SERIES (The Market Name)
         const options = {
             series: data.series,
             chart: { 
                 type: 'area', height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY,
                 events: {
-                    // For line/area, this triggers when you click a specific point
                     dataPointSelection: (e, chart, config) => {
                          const seriesIndex = config.seriesIndex;
                          if (seriesIndex === -1) return;
@@ -511,7 +528,37 @@
             stroke: { curve: 'smooth', width: 2 },
             fill: { type: 'gradient', gradient: { opacityFrom: 0.6, opacityTo: 0.1 } },
             xaxis: { categories: data.categories },
-            legend: { position: 'top', horizontalAlign: 'right' }
+            legend: { position: 'top', horizontalAlign: 'right' },
+            // NEW: Custom Tooltip to show Total
+            tooltip: {
+                custom: function({series, seriesIndex, dataPointIndex, w}) {
+                    const month = w.globals.labels[dataPointIndex];
+                    let total = 0;
+                    // Calculate sum of all series at this x-index
+                    series.forEach(s => {
+                        total += (s[dataPointIndex] || 0);
+                    });
+
+                    // Build simple HTML structure
+                    let html = '<div style="background:white; padding:8px 10px; border:1px solid #ccc; font-size:12px;">';
+                    html += `<div><strong>${month}</strong></div>`;
+                    
+                    // List all non-zero series
+                    w.config.series.forEach((s, i) => {
+                        if (s.data[dataPointIndex] > 0) {
+                            html += `<div style="display:flex; align-items:center; gap:5px; margin-top:4px;">`;
+                            html += `<span style="width:8px; height:8px; border-radius:50%; background-color:${w.config.colors[i]}"></span>`;
+                            html += `<span>${s.name}: <strong>${s.data[dataPointIndex]}</strong></span></div>`;
+                        }
+                    });
+
+                    // Add Total Line
+                    html += `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #eee; font-weight:bold;">`;
+                    html += `Total: ${total}</div></div>`;
+                    
+                    return html;
+                }
+            }
         };
         const chart = new ApexCharts(document.querySelector("#chart1"), options);
         chart.render();
@@ -521,7 +568,20 @@
     function renderRepeatedPropsChart(data) {
         const options = {
             series: data.series,
-            chart: { type: 'bar', height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY },
+            chart: { 
+                type: 'bar', height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY,
+                // NEW: Enable Click Event for Drill-down
+                events: {
+                    dataPointSelection: (e, chart, config) => {
+                        const idx = config.selectedDataPoints[0][0];
+                        if (idx !== undefined && idx !== -1) {
+                             handleChartClick('property', config.w.config.xaxis.categories[idx]);
+                        } else {
+                             handleChartClick('property', null);
+                        }
+                    }
+                }
+            },
             colors: [COLORS.SINGLE_BAR],
             plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '50%' } },
             xaxis: { categories: data.categories },

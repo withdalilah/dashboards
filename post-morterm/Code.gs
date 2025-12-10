@@ -8,10 +8,10 @@ function onEdit(e) {
   // Only act on Column A (1)
   if (column === 1) {
     const value = range.getValue();
-
     // Check if it's a URL and not already a formula
     if (typeof value === "string" && value.startsWith("http")) {
-      const displayText = "Case " + (row - 1); // Adjust for header row
+      const displayText = "Case " + (row - 1);
+      // Adjust for header row
       const formula = `=HYPERLINK("${value}", "${displayText}")`;
       sheet.getRange(row, column).setFormula(formula);
     }
@@ -21,10 +21,12 @@ function onEdit(e) {
 function onFormSubmit(e) {
   const responses = e.namedValues;
   const timestamp = responses["Timestamp"][0];
-  // const email = responses["Email Address"][0]; // Adjust if your form field name is different
-  const caseId = responses["Case ID"] ? responses["Case ID"][0] : "No ID Case"; // Adjust as needed
+  // Adjust if your form field name is different
+  const caseId = responses["Case ID"] ?
+    responses["Case ID"][0] : "No ID Case"; // Adjust as needed
   const caseIdColumnIndex = 0;
-  const folderId = "1_gQPZoMSh7t9JHEQwFbURA48GxYL86ew"; // <-- Replace with your Google Drive folder ID
+  const folderId = "1_gQPZoMSh7t9JHEQwFbURA48GxYL86ew";
+  // <-- Replace with your Google Drive folder ID
 
   // 1. Create a Google Doc from form answers
   const doc = DocumentApp.create(`Response - ${caseId}`);
@@ -32,7 +34,6 @@ function onFormSubmit(e) {
   body.appendParagraph("📄 Case Summary").setHeading(DocumentApp.ParagraphHeading.HEADING1);
   body.appendParagraph(`🕓 Submitted: ${timestamp}`);
   body.appendParagraph(`📧 Respondent: ENTAH LAH\n`);
-
   for (const question in responses) {
     if (question !== "Timestamp") {
       const answer = responses[question][0];
@@ -51,14 +52,14 @@ function onFormSubmit(e) {
 
   // 3. Set PDF permissions (optional)
   pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
   // 4. Log PDF link to sheet + replace form link
-  const ss = SpreadsheetApp.openById("175WBoQpRxSaOBOQUSugM9OGA0JJfKYRTIkhUI6RiErw"); // <-- Put your actual spreadsheet ID here
-  const sheet = ss.getSheetByName("Feedbacks & Review Tracker");          // <-- Adjust tab name here
+  const ss = SpreadsheetApp.openById("175WBoQpRxSaOBOQUSugM9OGA0JJfKYRTIkhUI6RiErw");
+  // <-- Put your actual spreadsheet ID here
+  const sheet = ss.getSheetByName("Feedbacks & Review Tracker");
+  // <-- Adjust tab name here
   const lastRow = sheet.getLastRow();
   const pdfUrl = pdfFile.getUrl();
   let targetRow = -1;
-
   for (let i = 2; i <= lastRow; i++) { // Assuming row 1 is header
     const richText = sheet.getRange(i, caseIdColumnIndex + 1).getRichTextValue();
     if (!richText) continue;
@@ -73,26 +74,12 @@ function onFormSubmit(e) {
 
   // Change this column number if your form link is in another column (e.g. A = 1, B = 2)
   const formLinkColumn = 22;
-
   // Update the cell that previously contained the form link
   if (targetRow !== -1) {
     const displayText = `📄 PDF Generated Response`;
     const hyperlinkFormula = `=HYPERLINK("${pdfUrl}", "${displayText}")`;
     sheet.getRange(targetRow, formLinkColumn).setFormula(hyperlinkFormula);
   }
-
-  // // 4. Log PDF link to sheet
-  // const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  // const lastRow = sheet.getLastRow();
-  // sheet.getRange(lastRow, sheet.getLastColumn() + 1).setValue(pdfFile.getUrl());
-
-  // // 5. Optional: Email the respondent a copy
-  // MailApp.sendEmail({
-  //   to: email,
-  //   subject: `📝 Your Case Submission: ${caseId}`,
-  //   body: `Thank you for your response. You can view your case summary here:\n\n${pdfFile.getUrl()}`,
-  //   attachments: [pdfBlob],
-  // });
 }
 
 /**
@@ -107,20 +94,11 @@ function doGet(e) {
 
 /**
  * Fetches and processes all data from the spreadsheet for the dashboard.
- * This single function prepares data for all cards and charts to optimize performance.
- * @returns {Object} A data object containing formatted information for cards and charts.
- */
-/**
- * Fetches and processes all data from the spreadsheet for the dashboard.
- * Updated to split "Sources" by comma so combined values (e.g. "Google, Trustpilot") 
- * count towards their individual categories.
- *//**
- * Fetches and processes all data from the spreadsheet for the dashboard.
+ * Updated to split "Sources" by comma and include additional metadata for filtering.
  */
 function getDashboardData() {
   const SPREADSHEET_NAME = "PostMortem_Feedback & Issues";
   const SHEET_NAME = "Feedbacks & Review Tracker";
-  
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAME);
@@ -132,11 +110,9 @@ function getDashboardData() {
     // Get Values (Text/Numbers)
     const range = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
     const data = range.getValues();
-
     // Get Links specifically from Column A (Case ID)
-    // We need RichTextValues to extract the URL from the HYPERLINK formula
     const linkData = sheet.getRange(2, 1, lastRow - 1, 1).getRichTextValues();
-
+    
     // --- Data Processing ---
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -146,7 +122,6 @@ function getDashboardData() {
     let ongoingCases = 0;
     let casesThisMonth = 0;
     let reviewRemoved = 0;
-
     const categoryCounts = {};
     const marketCounts = {};
     const sourceCounts = {}; 
@@ -159,7 +134,6 @@ function getDashboardData() {
     data.forEach((row, i) => {
       totalCases++;
 
-      // Extract URL from the parallel linkData array
       const richText = linkData[i][0];
       const caseUrl = richText ? richText.getLinkUrl() : null;
 
@@ -174,31 +148,40 @@ function getDashboardData() {
       const isRemoved = (row[11] && row[11].toString().toLowerCase() === "yes");
       const statusRaw = row[15] ? row[15].toString() : 'Unknown';
       
-      // 1. Populate Table Data (Only what we need)
+      // Determine if case is from this month
+      let isThisMonth = false;
+      if (reviewDateStr && reviewDateStr instanceof Date) {
+        if (reviewDateStr.getMonth() === currentMonth && reviewDateStr.getFullYear() === currentYear) {
+           isThisMonth = true;
+           casesThisMonth++;
+        }
+      }
+
+      // 1. Populate Table Data (Expanded for filters)
       rawTableData.push({
         id: caseIdText,
-        url: caseUrl, // The extracted link
+        url: caseUrl,
         summary: summary,
-        // We still need these for the highlighting logic, even if not shown in table
         market: market,
         source: sourceRaw,
         category: category,
-        status: statusRaw
+        status: statusRaw,
+        // New fields for filtering
+        propertyId: propertyId,
+        isRemoved: isRemoved,
+        isThisMonth: isThisMonth
       });
 
-      // 2. Process Counts (Same as before)
+      // 2. Process Counts
       propertyCounts[propertyId] = (propertyCounts[propertyId] || 0) + 1;
-
+      
       const statusLower = statusRaw.toLowerCase();
       if (statusLower === 'ongoing' || statusLower === 'open') ongoingCases++;
       statusCounts[statusRaw] = (statusCounts[statusRaw] || 0) + 1;
-
+      
       if (isRemoved) reviewRemoved++;
 
       if (reviewDateStr && reviewDateStr instanceof Date) {
-        if (reviewDateStr.getMonth() === currentMonth && reviewDateStr.getFullYear() === currentYear) {
-          casesThisMonth++;
-        }
         const monthYear = `${reviewDateStr.toLocaleString('default', { month: 'short' })} ${reviewDateStr.getFullYear()}`;
         if (!marketCasesByMonth[market]) marketCasesByMonth[market] = {};
         marketCasesByMonth[market][monthYear] = (marketCasesByMonth[market][monthYear] || 0) + 1;
@@ -214,18 +197,18 @@ function getDashboardData() {
     });
 
     // --- Prepare Data for Charts ---
+    // Updated: Filter out "Unknown" properties before slicing
     const repeatedProperties = Object.entries(propertyCounts)
-      .filter(([pid, count]) => count >= 2)
+      .filter(([pid, count]) => pid !== 'Unknown' && count >= 2)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
-
+      
     const repeatedPropertyData = {
       categories: repeatedProperties.map(item => item[0]),
       series: [{ name: "Repeats", data: repeatedProperties.map(item => item[1]) }]
     };
 
     const findTopItem = (counts) => Object.keys(counts).length ? Object.entries(counts).reduce((a, b) => a[1] > b[1] ? a : b)[0] : 'N/A';
-
     const allMonths = [...new Set(Object.values(marketCasesByMonth).flatMap(Object.keys))].sort((a,b) => new Date(a) - new Date(b));
     const marketSeries = Object.keys(marketCasesByMonth).map(mkt => {
       return {
