@@ -1,587 +1,594 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base target="_top">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  
-  <style>
-    body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-    .card { transition: transform 0.2s; cursor: pointer; }
-    .card:hover { transform: translateY(-3px); }
-    .chart-container { position: relative; height: 300px; width: 100%; }
-    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 50px auto; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    /* Modal Styles */
-    #modalOverlay { background-color: rgba(0,0,0,0.5); }
-  </style>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            /* --- STRICT PALETTE --- 
+               Blue: #8BA8E3
+               Beige: #F3F4E3
+               Coral: #F58F79
+               GreyBlue: #DBDFEC
+               Pink: #FFEAE5
+            */
+
+            --primary-bg: #8BA8E3;      
+            --primary-font: #5A6B8C;    
+            --header-text: #8BA8E3;     
+            
+            --card-bg: #FFFFFF;         
+            --body-bg: #F3F4E3;         
+            --border-radius: 12px;
+            
+            /* Highlight Colors */
+            --highlight-row-bg: #FFEAE5; 
+            --highlight-chart: #F58F79;  
+            --dimmed-chart: #DBDFEC;     
+            --filter-tag-bg: #DBDFEC;    
+            --border-color: #DBDFEC;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--body-bg);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 100px;
+            color: #444; 
+        }
+
+        /* --- Header --- */
+        .main-header {
+            background-color: var(--card-bg); padding: 20px; border-radius: var(--border-radius);
+            margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 15px;
+            box-shadow: 0 4px 15px rgba(139, 168, 227, 0.15);
+        }
+        .main-header h1 { margin: 0; font-size: 1.8em; color: var(--header-text); }
+        .main-header p { margin: 5px 0 0; color: #888; font-size: 0.9em; }
+
+        .controls { display: flex; gap: 10px; }
+        select {
+            padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--body-bg); color: #555; font-family: inherit; cursor: pointer;
+            outline: none;
+        }
+        select:focus { border-color: var(--primary-bg); }
+
+        /* --- KPI Cards --- */
+        .kpi-container { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+        .kpi-card {
+            background-color: var(--card-bg); border-radius: var(--border-radius);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); padding: 16px; flex: 1 1 150px;
+            display: flex; flex-direction: column; justify-content: space-between; min-width: 140px;
+            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; 
+            border: 1px solid transparent;
+        }
+        .kpi-card:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 8px 16px rgba(139, 168, 227, 0.2); 
+            border-color: var(--primary-bg);
+        } 
+
+        .kpi-card h3 { margin: 0 0 10px 0; font-size: 0.85em; text-transform: uppercase; color: #999; letter-spacing: 0.5px;}
+        .kpi-card .value-container { display: flex; justify-content: space-between; align-items: flex-end; }
+        .kpi-card .result { font-size: 1.8em; font-weight: 700; color: #444; }
+        .kpi-card .icon { font-size: 1.5em; color: var(--primary-bg); opacity: 0.8; }
+
+        /* --- Charts Grid --- */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .chart-card {
+            background-color: var(--card-bg); padding: 16px; border-radius: var(--border-radius);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); min-height: 350px; position: relative;
+        }
+        .span-2 { grid-column: span 2; }
+        .span-3 { grid-column: span 3; }
+        
+        .section-title {
+            grid-column: span 3; margin: 20px 0 10px 0; 
+            font-size: 1.2em; font-weight: 600; color: var(--primary-font); border-bottom: 2px solid var(--border-color); padding-bottom: 10px;
+        }
+
+        /* --- Floating Bottom Drawer (Replaces Modal for Theme Consistency) --- */
+        .case-drawer {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 500px;
+            background-color: white;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            border-top-left-radius: 16px; border-top-right-radius: 16px;
+            z-index: 900;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column;
+        }
+
+        .case-drawer.open { transform: translateY(0); }
+
+        .drawer-header {
+            padding: 15px 24px; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+            background-color: #FAFAFA; border-top-left-radius: 16px; border-top-right-radius: 16px;
+        }
+        
+        .drawer-content { flex-grow: 1; overflow-y: auto; padding: 0; }
+
+        .drawer-toggle-btn {
+            position: fixed; bottom: 24px; right: 24px;
+            background-color: var(--primary-bg); color: white;
+            border: none; border-radius: 50px; padding: 14px 28px;
+            font-size: 1em; font-weight: 600;
+            box-shadow: 0 4px 12px rgba(139, 168, 227, 0.5);
+            cursor: pointer; z-index: 950;
+            display: flex; align-items: center; gap: 10px;
+            transition: all 0.2s;
+        }
+        .drawer-toggle-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(139, 168, 227, 0.6); }
+        .drawer-toggle-btn.hidden { display: none; }
+
+        /* Table Styling */
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th { text-align: left; padding: 14px 24px; background-color: white; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--header-text); }
+        td { padding: 12px 24px; border-bottom: 1px solid var(--border-color); color: #555; vertical-align: top; }
+        
+        tbody tr:hover { background-color: #f9f9f9; }
+
+        /* Responsive */
+        @media (max-width: 1024px) { 
+            .dashboard-grid { grid-template-columns: 1fr 1fr; } 
+            .span-2, .span-3, .section-title { grid-column: span 2; } 
+        }
+        @media (max-width: 768px) { 
+            .dashboard-grid { display: flex; flex-direction: column; } 
+        }
+
+        /* Loader */
+        .loader-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-bg); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body class="text-gray-800">
+<body>
 
-  <nav class="bg-white shadow-md sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between h-16 items-center">
-        <div class="flex items-center">
-          <span class="text-xl font-bold text-blue-600 tracking-tight">AI Issue Analytics</span>
-        </div>
-        <div class="flex space-x-4">
-          <select id="monthFilter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
-            <option value="All">All Months</option>
-            </select>
-          <select id="marketFilter" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
-            <option value="All">All Markets</option>
-            <option value="Dubai">Dubai</option>
-            <option value="Portugal">Portugal</option>
-            <option value="UK">UK</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </nav>
+    <div id="loader-wrapper" class="loader-container"><div class="loader"></div></div>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    
-    <div id="loading" class="text-center">
-      <div class="loader"></div>
-      <p class="text-gray-500 mt-2">Loading Dashboard Data...</p>
-    </div>
-
-    <div id="dashboard" class="hidden space-y-8">
-      
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="bg-white overflow-hidden shadow rounded-lg card p-5 border-l-4 border-blue-500" onclick="showMetricDetails('Dubai')">
-          <dt class="text-sm font-medium text-gray-500 truncate">Low Rating: Dubai</dt>
-          <dd id="metric-Dubai" class="mt-1 text-3xl font-semibold text-gray-900">0</dd>
-        </div>
-        <div class="bg-white overflow-hidden shadow rounded-lg card p-5 border-l-4 border-green-500" onclick="showMetricDetails('Portugal')">
-          <dt class="text-sm font-medium text-gray-500 truncate">Low Rating: Portugal</dt>
-          <dd id="metric-Portugal" class="mt-1 text-3xl font-semibold text-gray-900">0</dd>
-        </div>
-        <div class="bg-white overflow-hidden shadow rounded-lg card p-5 border-l-4 border-red-500" onclick="showMetricDetails('UK')">
-          <dt class="text-sm font-medium text-gray-500 truncate">Low Rating: UK</dt>
-          <dd id="metric-UK" class="mt-1 text-3xl font-semibold text-gray-900">0</dd>
-        </div>
-        <div class="bg-white overflow-hidden shadow rounded-lg card p-5 border-l-4 border-purple-500" onclick="showMetricDetails('All')">
-          <dt class="text-sm font-medium text-gray-500 truncate">Low Rating: Global (GR)</dt>
-          <dd id="metric-All" class="mt-1 text-3xl font-semibold text-gray-900">0</dd>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        <div class="bg-white shadow rounded-lg p-6 col-span-1 lg:col-span-2">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Ticket Volume Over Time</h3>
-          <div class="chart-container">
-            <canvas id="timelineChart"></canvas>
-          </div>
+    <div id="dashboard-content" style="visibility: hidden;">
+        <div class="main-header">
+            <div>
+                <h1><i class="fa-solid fa-robot"></i> AI Issue Analytics</h1>
+                <p>Performance & Issue Tracking Dashboard</p>
+            </div>
+            <div class="controls">
+                <select id="monthFilter"><option value="All">All Months</option></select>
+                <select id="marketFilter">
+                    <option value="All">All Markets</option>
+                    <option value="Dubai">Dubai</option>
+                    <option value="Portugal">Portugal</option>
+                    <option value="UK">UK</option>
+                </select>
+            </div>
         </div>
 
-        <div class="bg-white shadow rounded-lg p-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Ticket Status Distribution</h3>
-          <div class="chart-container">
-            <canvas id="statusChart"></canvas>
-          </div>
-        </div>
-
-        <div class="bg-white shadow rounded-lg p-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Incoming Platform Source</h3>
-          <div class="chart-container">
-            <canvas id="sourceChart"></canvas>
-          </div>
-        </div>
-
-        <div class="bg-white shadow rounded-lg p-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Cases by Category</h3>
-          <div class="chart-container">
-            <canvas id="categoryChart"></canvas>
-          </div>
-        </div>
-
-        <div class="bg-white shadow rounded-lg p-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Cases by Subcategory</h3>
-          <div class="chart-container">
-            <canvas id="subcategoryChart"></canvas>
-          </div>
+        <div class="kpi-container">
+            <div class="kpi-card" onclick="handleCardClick('Dubai')">
+                <h3>Low Rating: Dubai</h3>
+                <div class="value-container"><span id="metric-Dubai" class="result">0</span><i class="fa-solid fa-star-half-stroke icon"></i></div>
+            </div>
+            <div class="kpi-card" onclick="handleCardClick('Portugal')">
+                <h3>Low Rating: Portugal</h3>
+                <div class="value-container"><span id="metric-Portugal" class="result">0</span><i class="fa-solid fa-star-half-stroke icon"></i></div>
+            </div>
+            <div class="kpi-card" onclick="handleCardClick('UK')">
+                <h3>Low Rating: UK</h3>
+                <div class="value-container"><span id="metric-UK" class="result">0</span><i class="fa-solid fa-star-half-stroke icon"></i></div>
+            </div>
+            <div class="kpi-card" onclick="handleCardClick('All')">
+                <h3>Low Rating: Global</h3>
+                <div class="value-container"><span id="metric-All" class="result">0</span><i class="fa-solid fa-globe icon"></i></div>
+            </div>
         </div>
         
-         <div class="bg-white shadow rounded-lg p-6 col-span-1 lg:col-span-2">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Top 5 Repeated Properties (Rating &le; 1)</h3>
-          <div class="chart-container">
-            <canvas id="propertyChart"></canvas>
-          </div>
+        <div class="dashboard-grid">
+            <div class="chart-card span-2"><div id="chartTimeline"></div></div>
+            <div class="chart-card span-1"><div id="chartStatus"></div></div>
+
+            <div class="chart-card span-1"><div id="chartSource"></div></div>
+            <div class="chart-card span-1"><div id="chartCategory"></div></div>
+            <div class="chart-card span-1"><div id="chartSubcategory"></div></div>
+
+            <div class="chart-card span-3"><div id="chartRepeated"></div></div>
+
+            <div class="section-title"><i class="fa-solid fa-magnifying-glass-chart"></i> Special Analysis</div>
+
+            <div class="chart-card span-1"><div id="chartMissing"></div></div>
+            <div class="chart-card span-2"><div id="chartOverdue"></div></div>
         </div>
-
-      </div>
-
-      <h2 class="text-2xl font-bold text-gray-800 mt-10 mb-4 border-b pb-2">Special Analysis</h2>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        <div class="bg-white shadow rounded-lg p-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Missing Due Dates (GXO Post-mortem)</h3>
-          <div class="chart-container">
-            <canvas id="missingDateChart"></canvas>
-          </div>
-        </div>
-
-        <div class="bg-white shadow rounded-lg p-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Tickets Overdue > 30 Days (Active)</h3>
-          <div class="chart-container">
-            <canvas id="overdueChart"></canvas>
-          </div>
-        </div>
-
-      </div>
     </div>
-  </main>
 
-  <div id="modalOverlay" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-      <div class="p-6 border-b flex justify-between items-center">
-        <h3 id="modalTitle" class="text-xl font-semibold text-gray-900">Details</h3>
-        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-      </div>
-      <div class="p-6 overflow-y-auto flex-1">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Issue ID</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Prop ID</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Office</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subcategory</th>
-            </tr>
-          </thead>
-          <tbody id="modalBody" class="bg-white divide-y divide-gray-200">
-            </tbody>
-        </table>
-      </div>
+    <button id="drawer-btn" class="drawer-toggle-btn hidden" onclick="toggleDrawer()">
+        <i class="fa-solid fa-list-ul"></i> View Details
+    </button>
+
+    <div id="case-drawer" class="case-drawer">
+        <div class="drawer-header">
+            <div>
+                <h3 style="margin:0; color: var(--header-text);" id="drawer-title">Details</h3>
+                <small id="drawer-count" style="color:#888;"></small>
+            </div>
+            <button onclick="toggleDrawer()" style="background:none; border:none; font-size:1.2em; cursor:pointer; color:#666;"><i class="fa-solid fa-chevron-down"></i></button>
+        </div>
+        <div class="drawer-content">
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Status</th><th>Prop ID</th><th>Office</th><th>Category</th><th>Subcategory</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
     </div>
-  </div>
 
-  <script>
-    let rawData = [];
-    let charts = {}; // Store chart instances
-
-    // Initialization
-    window.onload = function() {
-      google.script.run.withSuccessHandler(initDashboard).getDashboardData();
+<script>
+    // --- Configuration ---
+    const COLORS = {
+        PALETTE: ['#8BA8E3', '#F58F79', '#DBDFEC', '#9AB6ED', '#FAB0A0'],
+        BLUE: '#8BA8E3',
+        CORAL: '#F58F79',
+        GREY: '#DBDFEC',
+        BEIGE: '#F3F4E3'
     };
+    const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+    let rawData = [];
+    let charts = {}; 
+
+    document.addEventListener('DOMContentLoaded', function() {
+        google.script.run.withSuccessHandler(initDashboard).withFailureHandler(showError).getDashboardData();
+    });
+
+    function showError(err) {
+        document.getElementById('loader-wrapper').style.display = 'none';
+        alert("Error: " + err.message);
+    }
 
     function initDashboard(jsonString) {
-      rawData = JSON.parse(jsonString);
-      document.getElementById('loading').classList.add('hidden');
-      document.getElementById('dashboard').classList.remove('hidden');
+        rawData = JSON.parse(jsonString);
+        document.getElementById('loader-wrapper').style.display = 'none';
+        document.getElementById('dashboard-content').style.visibility = 'visible';
 
-      populateMonthFilter();
-      setupEventListeners();
-      updateDashboard();
+        populateMonthFilter();
+        setupEventListeners();
+        renderDashboard();
     }
 
     function populateMonthFilter() {
-      // Extract unique months from dd/mm/yyyy
-      const months = [...new Set(rawData.map(d => {
-        if(!d.createdDate) return "";
-        const parts = d.createdDate.split('/');
-        return parts.length === 3 ? `${parts[1]}/${parts[2]}` : "";
-      }).filter(m => m !== ""))];
+        // Extract unique months from dd/mm/yyyy
+        const months = [...new Set(rawData.map(d => {
+            if(!d.createdDate) return "";
+            const parts = d.createdDate.split('/');
+            return parts.length === 3 ? `${parts[1]}/${parts[2]}` : "";
+        }).filter(m => m !== ""))].sort();
 
-      const select = document.getElementById('monthFilter');
-      months.sort().forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m;
-        opt.textContent = m;
-        select.appendChild(opt);
-      });
+        const select = document.getElementById('monthFilter');
+        months.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            select.appendChild(opt);
+        });
     }
 
     function setupEventListeners() {
-      document.getElementById('monthFilter').addEventListener('change', updateDashboard);
-      document.getElementById('marketFilter').addEventListener('change', updateDashboard);
+        document.getElementById('monthFilter').addEventListener('change', renderDashboard);
+        document.getElementById('marketFilter').addEventListener('change', renderDashboard);
     }
 
     // --- Core Logic ---
 
     function getFilteredData() {
-      const monthVal = document.getElementById('monthFilter').value;
-      const marketVal = document.getElementById('marketFilter').value;
-
-      return rawData.filter(item => {
-        // Month Filter Logic
-        let monthMatch = true;
-        if (monthVal !== "All") {
-          const parts = item.createdDate.split('/');
-          const itemMonth = parts.length === 3 ? `${parts[1]}/${parts[2]}` : "";
-          if (itemMonth !== monthVal) monthMatch = false;
-        }
-        return monthMatch;
-      });
+        const monthVal = document.getElementById('monthFilter').value;
+        return rawData.filter(item => {
+            if (monthVal === "All") return true;
+            const parts = item.createdDate.split('/');
+            const itemMonth = parts.length === 3 ? `${parts[1]}/${parts[2]}` : "";
+            return itemMonth === monthVal;
+        });
     }
 
-    function updateDashboard() {
-      const globalData = getFilteredData(); // Filtered by Month Only first
-      const marketVal = document.getElementById('marketFilter').value;
-      
-      // Update Metric Cards (These respect Market filter implicitly via arguments, or we calculate strictly)
-      // Prompt says: Filter bar filters "All dashboard sections".
-      // Metric cards have specific definitions (Dubai, Portugal, UK).
-      // If Global Filter is "Month: Nov", Metrics show Nov data.
-      updateMetricCards(globalData);
+    function renderDashboard() {
+        const globalData = getFilteredData(); 
+        const marketVal = document.getElementById('marketFilter').value;
+        
+        // 1. Metrics (Always reflect Month Filter + Specific Market Card definition)
+        updateMetrics(globalData);
 
-      // Update Charts (These respect both Month and Market filters)
-      const chartData = globalData.filter(d => {
-        if (marketVal === "All") return true;
-        return d.country.toLowerCase().includes(marketVal.toLowerCase());
-      });
+        // 2. Charts (Reflect Month + Market Filter)
+        const chartData = globalData.filter(d => {
+            if (marketVal === "All") return true;
+            return d.country.toLowerCase().includes(marketVal.toLowerCase());
+        });
 
-      renderTimeline(globalData, marketVal); // Timeline handles its own grouping
-      renderDonut(chartData);
-      renderBarCategory(chartData);
-      renderBarSubcategory(chartData);
-      renderPieSource(chartData);
-      renderRepeatedProperties(globalData, marketVal); // Handles logic internally
-
-      // Special Analysis (Prompt: Exclude Closed, specific logic)
-      renderSpecialAnalysis(rawData); // Usually global analysis, but can be filtered. Sticking to Prompt "All tickets where..."
+        // Render Charts using ApexCharts
+        renderTimeline(globalData, marketVal); // Timeline handles market grouping internally
+        renderDonut(chartData);
+        renderBar(chartData, 'category', 'chartCategory', 'Cases by Category', COLORS.BLUE);
+        renderBar(chartData, 'subcategory', 'chartSubcategory', 'Cases by Subcategory', COLORS.CORAL);
+        renderPie(chartData);
+        renderRepeated(globalData, marketVal);
+        renderSpecial(rawData); // Special analysis often looks at global history, or we can use globalData if intended
     }
 
     // --- Metric Cards ---
-    
-    function updateMetricCards(data) {
-      // Filter for Rating <= 1
-      const lowRated = data.filter(d => d.rating > 0 && d.rating <= 1);
-      
-      const counts = {
-        Dubai: lowRated.filter(d => d.country.includes('Dubai')).length,
-        Portugal: lowRated.filter(d => d.country.includes('Portugal')).length,
-        UK: lowRated.filter(d => d.country.includes('Kingdom')).length, // "United Kingdom"
-        All: lowRated.length
-      };
+    function updateMetrics(data) {
+        const lowRated = data.filter(d => d.rating > 0 && d.rating <= 1);
+        
+        const counts = {
+            Dubai: lowRated.filter(d => d.country.includes('Dubai')).length,
+            Portugal: lowRated.filter(d => d.country.includes('Portugal')).length,
+            UK: lowRated.filter(d => d.country.includes('Kingdom')).length,
+            All: lowRated.length
+        };
 
-      document.getElementById('metric-Dubai').innerText = counts.Dubai;
-      document.getElementById('metric-Portugal').innerText = counts.Portugal;
-      document.getElementById('metric-UK').innerText = counts.UK;
-      document.getElementById('metric-All').innerText = counts.All;
+        ['Dubai', 'Portugal', 'UK', 'All'].forEach(k => {
+            const el = document.getElementById(`metric-${k}`);
+            if(el) el.innerText = counts[k];
+        });
     }
 
-    function showMetricDetails(market) {
-      const monthVal = document.getElementById('monthFilter').value;
-      let data = rawData.filter(d => d.rating > 0 && d.rating <= 1);
+    function handleCardClick(market) {
+        const monthVal = document.getElementById('monthFilter').value;
+        let data = rawData.filter(d => d.rating > 0 && d.rating <= 1);
 
-      if (monthVal !== "All") {
-        data = data.filter(d => d.createdDate.includes(monthVal)); // rough match for simplicity or reuse split logic
-      }
+        if (monthVal !== "All") {
+             data = data.filter(d => d.createdDate && d.createdDate.includes(monthVal));
+        }
 
-      if (market !== "All") {
-        const search = market === 'UK' ? 'Kingdom' : market;
-        data = data.filter(d => d.country.includes(search));
-      }
-      
-      openModal(`${market} - Low Rated Tickets`, data);
+        if (market !== "All") {
+            const search = market === 'UK' ? 'Kingdom' : market;
+            data = data.filter(d => d.country.includes(search));
+        }
+        
+        openDrawer(`${market} - Low Rated Tickets`, data);
     }
 
-    // --- Charts ---
-
-    function destroyChart(id) {
-      if (charts[id]) {
-        charts[id].destroy();
-      }
-    }
+    // --- ApexCharts Implementations ---
 
     function renderTimeline(data, marketFilter) {
-      destroyChart('timelineChart');
-      // Group by Date
-      const dates = {};
-      
-      data.forEach(d => {
-        // Apply market filter visually, but timeline usually compares? 
-        // Prompt: "Show ... for each market". Multiline chart.
-        const date = d.createdDate;
-        if (!date) return;
-        
-        if (!dates[date]) dates[date] = { Dubai: 0, Portugal: 0, UK: 0, Other: 0 };
-        
-        if (d.country.includes('Dubai')) dates[date].Dubai++;
-        else if (d.country.includes('Portugal')) dates[date].Portugal++;
-        else if (d.country.includes('Kingdom')) dates[date].UK++;
-        else dates[date].Other++;
-      });
+        // Aggregation
+        const dates = {};
+        data.forEach(d => {
+            const date = d.createdDate; 
+            if(!date) return;
+            if(!dates[date]) dates[date] = { Dubai: 0, Portugal: 0, UK: 0 };
+            
+            if(d.country.includes('Dubai')) dates[date].Dubai++;
+            else if(d.country.includes('Portugal')) dates[date].Portugal++;
+            else if(d.country.includes('Kingdom')) dates[date].UK++;
+        });
 
-      // Sort dates
-      const sortedDates = Object.keys(dates).sort((a,b) => {
-        const [d1, m1, y1] = a.split('/');
-        const [d2, m2, y2] = b.split('/');
-        return new Date(`${y1}-${m1}-${d1}`) - new Date(`${y2}-${m2}-${d2}`);
-      });
+        const sortedDates = Object.keys(dates).sort((a,b) => {
+            const [d1, m1, y1] = a.split('/');
+            const [d2, m2, y2] = b.split('/');
+            return new Date(`${y1}-${m1}-${d1}`) - new Date(`${y2}-${m2}-${d2}`);
+        });
 
-      const ctx = document.getElementById('timelineChart').getContext('2d');
-      charts['timelineChart'] = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: sortedDates,
-          datasets: [
-            { label: 'Dubai', data: sortedDates.map(d => dates[d].Dubai), borderColor: '#3b82f6', tension: 0.3 },
-            { label: 'Portugal', data: sortedDates.map(d => dates[d].Portugal), borderColor: '#10b981', tension: 0.3 },
-            { label: 'UK', data: sortedDates.map(d => dates[d].UK), borderColor: '#ef4444', tension: 0.3 }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          onClick: (e, activeEls) => {
-            if (activeEls.length > 0) {
-              const index = activeEls[0].index;
-              const date = sortedDates[index];
-              const drillData = data.filter(d => d.createdDate === date);
-              openModal(`Tickets on ${date}`, drillData);
-            }
-          }
-        }
-      });
+        const series = [
+            { name: 'Dubai', data: sortedDates.map(d => dates[d].Dubai) },
+            { name: 'Portugal', data: sortedDates.map(d => dates[d].Portugal) },
+            { name: 'UK', data: sortedDates.map(d => dates[d].UK) }
+        ];
+
+        const options = {
+            series: series,
+            chart: { 
+                type: 'area', height: 320, fontFamily: FONT_FAMILY, toolbar: { show: false },
+                events: {
+                    markerClick: function(event, chartContext, { seriesIndex, dataPointIndex }) {
+                        const date = sortedDates[dataPointIndex];
+                        // Get data for this date
+                        const drillData = data.filter(d => d.createdDate === date);
+                        openDrawer(`Tickets on ${date}`, drillData);
+                    }
+                }
+            },
+            colors: [COLORS.BLUE, COLORS.CORAL, '#9AB6ED'],
+            stroke: { curve: 'smooth', width: 2 },
+            fill: { type: 'gradient', gradient: { opacityFrom: 0.6, opacityTo: 0.1 } },
+            xaxis: { categories: sortedDates },
+            title: { text: 'Ticket Volume Over Time', style: { color: COLORS.BLUE, fontSize: '16px' } }
+        };
+
+        if(charts['timeline']) charts['timeline'].destroy();
+        charts['timeline'] = new ApexCharts(document.querySelector("#chartTimeline"), options);
+        charts['timeline'].render();
     }
 
     function renderDonut(data) {
-      destroyChart('statusChart');
-      const counts = {};
-      data.forEach(d => {
-        const s = d.status || "Unknown";
-        counts[s] = (counts[s] || 0) + 1;
-      });
-
-      const ctx = document.getElementById('statusChart').getContext('2d');
-      charts['statusChart'] = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(counts),
-          datasets: [{
-            data: Object.values(counts),
-            backgroundColor: ['#60a5fa', '#34d399', '#f87171', '#fbbf24', '#a78bfa']
-          }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-    }
-
-    function renderBarCategory(data) {
-      destroyChart('categoryChart');
-      const counts = {};
-      data.forEach(d => {
-        const c = d.category || "Uncategorized";
-        counts[c] = (counts[c] || 0) + 1;
-      });
-      // Sort
-      const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 10); // Top 10
-
-      const ctx = document.getElementById('categoryChart').getContext('2d');
-      charts['categoryChart'] = new Chart(ctx, {
-        type: 'bar',
-        indexAxis: 'y',
-        data: {
-          labels: sorted.map(i => i[0]),
-          datasets: [{
-            label: 'Cases',
-            data: sorted.map(i => i[1]),
-            backgroundColor: '#818cf8'
-          }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-    }
-
-    function renderBarSubcategory(data) {
-      destroyChart('subcategoryChart');
-      const counts = {};
-      data.forEach(d => {
-        const c = d.subcategory || "Uncategorized";
-        counts[c] = (counts[c] || 0) + 1;
-      });
-      const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 10); 
-
-      const ctx = document.getElementById('subcategoryChart').getContext('2d');
-      charts['subcategoryChart'] = new Chart(ctx, {
-        type: 'bar',
-        indexAxis: 'y',
-        data: {
-          labels: sorted.map(i => i[0]),
-          datasets: [{
-            label: 'Cases',
-            data: sorted.map(i => i[1]),
-            backgroundColor: '#fbbf24'
-          }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-    }
-
-    function renderPieSource(data) {
-      destroyChart('sourceChart');
-      const counts = {};
-      data.forEach(d => {
-        const p = d.platform === "Null" ? "Null" : d.platform;
-        counts[p] = (counts[p] || 0) + 1;
-      });
-
-      const ctx = document.getElementById('sourceChart').getContext('2d');
-      charts['sourceChart'] = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: Object.keys(counts),
-          datasets: [{
-            data: Object.values(counts),
-            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          onClick: (e, activeEls) => {
-            if (activeEls.length > 0) {
-              const index = activeEls[0].index;
-              const platform = Object.keys(counts)[index];
-              const drillData = data.filter(d => (d.platform || "Null") === platform);
-              openModal(`Platform: ${platform}`, drillData);
-            }
-          }
-        }
-      });
-    }
-
-    function renderRepeatedProperties(data, market) {
-      destroyChart('propertyChart');
-      // Filter Rating <= 1
-      let relevant = data.filter(d => d.rating > 0 && d.rating <= 1);
-      
-      if (market !== "All") {
-        relevant = relevant.filter(d => d.country.toLowerCase().includes(market.toLowerCase()));
-      }
-
-      const counts = {};
-      relevant.forEach(d => {
-        const key = `${d.propertyId} (${d.country})`; // Unique key
-        counts[key] = (counts[key] || 0) + 1;
-      });
-
-      const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
-
-      const ctx = document.getElementById('propertyChart').getContext('2d');
-      charts['propertyChart'] = new Chart(ctx, {
-        type: 'bar',
-        indexAxis: 'y',
-        data: {
-          labels: sorted.map(s => s[0]),
-          datasets: [{
-            label: 'Repeated Issues',
-            data: sorted.map(s => s[1]),
-            backgroundColor: '#ef4444'
-          }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-    }
-
-    // --- Special Analysis ---
-
-    function renderSpecialAnalysis(allData) {
-      // 1. Missing Due Date
-      destroyChart('missingDateChart');
-      // Filter: AD = Global GXO... AND Due Date is empty AND Not Closed (usually implied in active mgmt, but prompt says Exclude Closed for overdue chart. I'll exclude CLOSED here too for safety or stick to prompt literally).
-      // Prompt Chart 7: Exclude CLOSED.
-      const missingData = allData.filter(d => 
-        d.requestedBy === "Global GXO - Reviews Post-mortem" && 
-        !d.dueDate && 
-        d.status !== "CLOSED"
-      );
-      
-      // Just a count pie chart? Or grouped by market? Prompt says "Count all...". A single number isn't a chart.
-      // Usually "By Market" is implied for dashboard breakdown. I will group by Market.
-      const missingCounts = {};
-      missingData.forEach(d => {
-        const c = d.country || "Unknown";
-        missingCounts[c] = (missingCounts[c] || 0) + 1;
-      });
-
-      new Chart(document.getElementById('missingDateChart'), {
-        type: 'pie',
-        data: {
-          labels: Object.keys(missingCounts),
-          datasets: [{ data: Object.values(missingCounts), backgroundColor: ['#ec4899', '#8b5cf6', '#6366f1'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-
-      // 2. Overdue > 30 Days
-      destroyChart('overdueChart');
-      // Parse dates relative to Today.
-      const today = new Date();
-      const overdueData = allData.filter(d => {
-        if (d.status === "CLOSED" || !d.dueDate) return false;
+        const counts = {};
+        data.forEach(d => { counts[d.status || 'Unknown'] = (counts[d.status || 'Unknown'] || 0) + 1; });
         
-        // Parse dd/mm/yyyy
-        const parts = d.dueDate.split('/');
-        if (parts.length !== 3) return false;
-        const dueObj = new Date(parts[2], parts[1]-1, parts[0]); // Y, M-1, D
-        
-        const diffTime = Math.abs(today - dueObj);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        
-        // Check if past due
-        return (today > dueObj) && (diffDays > 30);
-      });
+        const options = {
+            series: Object.values(counts),
+            labels: Object.keys(counts),
+            chart: { type: 'donut', height: 320, fontFamily: FONT_FAMILY },
+            colors: COLORS.PALETTE,
+            title: { text: 'Ticket Status Distribution', style: { color: COLORS.BLUE, fontSize: '16px' } }
+        };
 
-      const odCounts = { Dubai: 0, Portugal: 0, UK: 0, Total: 0 };
-      overdueData.forEach(d => {
-        odCounts.Total++;
-        if (d.country.includes('Dubai')) odCounts.Dubai++;
-        else if (d.country.includes('Portugal')) odCounts.Portugal++;
-        else if (d.country.includes('Kingdom')) odCounts.UK++;
-      });
-
-      new Chart(document.getElementById('overdueChart'), {
-        type: 'bar',
-        data: {
-          labels: ['Dubai', 'Portugal', 'UK', 'Total'],
-          datasets: [{
-            label: 'Overdue > 30 Days',
-            data: [odCounts.Dubai, odCounts.Portugal, odCounts.UK, odCounts.Total],
-            backgroundColor: ['#3b82f6', '#10b981', '#ef4444', '#6b7280']
-          }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
+        if(charts['status']) charts['status'].destroy();
+        charts['status'] = new ApexCharts(document.querySelector("#chartStatus"), options);
+        charts['status'].render();
     }
 
-    // --- Modal Logic ---
-
-    function openModal(title, dataList) {
-      document.getElementById('modalTitle').innerText = title;
-      const tbody = document.getElementById('modalBody');
-      tbody.innerHTML = '';
-
-      if (dataList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">No records found.</td></tr>';
-      } else {
-        dataList.forEach(item => {
-          const row = `
-            <tr>
-              <td class="px-3 py-2 text-sm text-gray-900">${item.id}</td>
-              <td class="px-3 py-2 text-sm text-gray-500"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">${item.status}</span></td>
-              <td class="px-3 py-2 text-sm text-gray-500">${item.propertyId}</td>
-              <td class="px-3 py-2 text-sm text-gray-500">${item.office}</td>
-              <td class="px-3 py-2 text-sm text-gray-500">${item.category}</td>
-              <td class="px-3 py-2 text-sm text-gray-500">${item.subcategory}</td>
-            </tr>
-          `;
-          tbody.innerHTML += row;
+    function renderBar(data, field, elId, title, color) {
+        const counts = {};
+        data.forEach(d => { 
+            const val = d[field] || 'Uncategorized';
+            counts[val] = (counts[val] || 0) + 1; 
         });
-      }
+        
+        const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 10);
+        
+        const options = {
+            series: [{ name: 'Cases', data: sorted.map(i => i[1]) }],
+            chart: { type: 'bar', height: 320, fontFamily: FONT_FAMILY, toolbar: { show: false } },
+            plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '60%' } },
+            colors: [color],
+            xaxis: { categories: sorted.map(i => i[0]) },
+            title: { text: title, style: { color: COLORS.BLUE, fontSize: '16px' } }
+        };
 
-      document.getElementById('modalOverlay').classList.remove('hidden');
+        if(charts[elId]) charts[elId].destroy();
+        charts[elId] = new ApexCharts(document.querySelector(`#${elId}`), options);
+        charts[elId].render();
     }
 
-    function closeModal() {
-      document.getElementById('modalOverlay').classList.add('hidden');
+    function renderPie(data) {
+        const counts = {};
+        data.forEach(d => { 
+            const p = (d.platform === "Null" || !d.platform) ? "Null" : d.platform;
+            counts[p] = (counts[p] || 0) + 1; 
+        });
+
+        const options = {
+            series: Object.values(counts),
+            labels: Object.keys(counts),
+            chart: { 
+                type: 'pie', height: 320, fontFamily: FONT_FAMILY,
+                events: {
+                    dataPointSelection: (e, chart, config) => {
+                        const idx = config.selectedDataPoints[0][0];
+                        if (idx !== undefined && idx !== -1) {
+                            const label = config.w.config.labels[idx];
+                            const drill = data.filter(d => (d.platform || "Null") === label);
+                            openDrawer(`Source: ${label}`, drill);
+                        }
+                    }
+                }
+            },
+            colors: COLORS.PALETTE,
+            title: { text: 'Incoming Sources', style: { color: COLORS.BLUE, fontSize: '16px' } }
+        };
+
+        if(charts['source']) charts['source'].destroy();
+        charts['source'] = new ApexCharts(document.querySelector("#chartSource"), options);
+        charts['source'].render();
     }
-  </script>
+
+    function renderRepeated(data, market) {
+        let relevant = data.filter(d => d.rating > 0 && d.rating <= 1);
+        if (market !== "All") relevant = relevant.filter(d => d.country.toLowerCase().includes(market.toLowerCase()));
+
+        const counts = {};
+        relevant.forEach(d => {
+            const key = `${d.propertyId} (${d.country})`;
+            counts[key] = (counts[key] || 0) + 1;
+        });
+        const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+        const options = {
+            series: [{ name: 'Repeats', data: sorted.map(s => s[1]) }],
+            chart: { type: 'bar', height: 320, fontFamily: FONT_FAMILY, toolbar: { show: false } },
+            colors: [COLORS.CORAL],
+            plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '40%' } },
+            xaxis: { categories: sorted.map(s => s[0]) },
+            title: { text: 'Top Repeated Properties (Rating ≤ 1)', style: { color: COLORS.BLUE, fontSize: '16px' } }
+        };
+
+        if(charts['repeated']) charts['repeated'].destroy();
+        charts['repeated'] = new ApexCharts(document.querySelector("#chartRepeated"), options);
+        charts['repeated'].render();
+    }
+
+    function renderSpecial(allData) {
+        // 1. Missing Due Date (GXO) - Pie
+        const missing = allData.filter(d => d.requestedBy === "Global GXO - Reviews Post-mortem" && !d.dueDate && d.status !== "CLOSED");
+        const mCounts = {};
+        missing.forEach(d => { mCounts[d.country] = (mCounts[d.country] || 0) + 1; });
+
+        const opt1 = {
+            series: Object.values(mCounts), labels: Object.keys(mCounts),
+            chart: { type: 'pie', height: 300, fontFamily: FONT_FAMILY },
+            colors: COLORS.PALETTE,
+            title: { text: 'Missing Due Dates (GXO)', style: { color: COLORS.BLUE, fontSize: '14px' } }
+        };
+        if(charts['missing']) charts['missing'].destroy();
+        charts['missing'] = new ApexCharts(document.querySelector("#chartMissing"), opt1);
+        charts['missing'].render();
+
+        // 2. Overdue > 30 Days - Bar
+        const today = new Date();
+        const overdue = allData.filter(d => {
+            if (d.status === "CLOSED" || !d.dueDate) return false;
+            const parts = d.dueDate.split('/');
+            if (parts.length !== 3) return false;
+            const dueObj = new Date(parts[2], parts[1]-1, parts[0]);
+            const diffDays = Math.ceil((today - dueObj) / (1000 * 60 * 60 * 24));
+            return (today > dueObj) && (diffDays > 30);
+        });
+
+        const odCounts = { Dubai: 0, Portugal: 0, UK: 0, Total: 0 };
+        overdue.forEach(d => {
+            odCounts.Total++;
+            if (d.country.includes('Dubai')) odCounts.Dubai++;
+            else if (d.country.includes('Portugal')) odCounts.Portugal++;
+            else if (d.country.includes('Kingdom')) odCounts.UK++;
+        });
+
+        const opt2 = {
+            series: [{ name: 'Overdue', data: [odCounts.Dubai, odCounts.Portugal, odCounts.UK, odCounts.Total] }],
+            chart: { type: 'bar', height: 300, fontFamily: FONT_FAMILY, toolbar:{show:false} },
+            colors: [COLORS.CORAL],
+            xaxis: { categories: ['Dubai', 'Portugal', 'UK', 'Total'] },
+            title: { text: 'Tickets Overdue > 30 Days', style: { color: COLORS.BLUE, fontSize: '14px' } }
+        };
+        if(charts['overdue']) charts['overdue'].destroy();
+        charts['overdue'] = new ApexCharts(document.querySelector("#chartOverdue"), opt2);
+        charts['overdue'].render();
+    }
+
+    // --- Drawer Logic ---
+
+    function openDrawer(title, list) {
+        document.getElementById('drawer-title').innerText = title;
+        document.getElementById('drawer-count').innerText = `(${list.length} items)`;
+        
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+
+        if(list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#888;">No records found.</td></tr>';
+        } else {
+            list.slice(0, 100).forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${item.id}</strong></td>
+                    <td><span style="background:${COLORS.GREY}; padding:2px 8px; border-radius:12px; font-size:0.85em;">${item.status}</span></td>
+                    <td>${item.propertyId}</td>
+                    <td>${item.office}</td>
+                    <td>${item.category}</td>
+                    <td>${item.subcategory}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        const drawer = document.getElementById('case-drawer');
+        const btn = document.getElementById('drawer-btn');
+        if (!drawer.classList.contains('open')) {
+            drawer.classList.add('open');
+            btn.classList.add('hidden');
+        }
+    }
+
+    function toggleDrawer() {
+        const drawer = document.getElementById('case-drawer');
+        const btn = document.getElementById('drawer-btn');
+        const isOpen = drawer.classList.toggle('open');
+        if (isOpen) btn.classList.add('hidden'); else btn.classList.remove('hidden');
+    }
+
+</script>
 </body>
 </html>
