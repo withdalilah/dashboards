@@ -10,7 +10,7 @@ function doGet() {
 
 /**
  * Fetches data from the 'November' tab.
- * Maps specific columns based on the prompt's requirements.
+ * Maps columns based on the new requirements.
  */
 function getDashboardData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -23,8 +23,8 @@ function getDashboardData() {
   const data = sheet.getDataRange().getDisplayValues();
   const headers = data.shift(); // Remove headers
 
-  // Helper to convert Column Letter to Index (0-based)
-  // A=0, O=14, P=15, AB=27, AD=29, AF=31, AG=32, AH=33, AK=36
+  // Helper: Convert Column Letter to Index (0-based)
+  // A=0, F=5, O=14, P=15, T=19, AB=27, AD=29, AF=31, AG=32, AH=33, AK=36
   const col = (char) => {
     let result = 0;
     for (let i = 0; i < char.length; i++) {
@@ -38,26 +38,30 @@ function getDashboardData() {
     id: col('A'),
     dueDate: col('C'),
     status: col('E'),
+    issueType: col('F'),      // Parent/Child distinction
     propertyId: col('M'),
     country: col('O'),
     office: col('P'),
+    resId: col('T'),          // Reservation ID
     platform: col('AB'),
-    requestedBy: col('AD'), // Using AD for "Global GXO - Reviews Post-mortem" check
+    requestedBy: col('AD'),   // For Special Analysis
     category: col('AF'),
     subcategory: col('AG'),
     createdDate: col('AH'),
     rating: col('AK')
   };
 
-  // Structure data for frontend
+  // Process data to JSON
   const processedData = data.map(row => {
     return {
       id: row[map.id],
       dueDate: row[map.dueDate],
       status: row[map.status],
+      issueType: (row[map.issueType] || "").toUpperCase(),
       propertyId: row[map.propertyId],
       country: row[map.country] ? row[map.country].trim() : "Unknown",
       office: row[map.office],
+      resId: row[map.resId],
       platform: row[map.platform] || "Null",
       requestedBy: row[map.requestedBy],
       category: row[map.category],
