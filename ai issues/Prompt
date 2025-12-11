@@ -1,0 +1,59 @@
+As a UI/UX Designer, design a clean, intuitive, and interactive analytics dashboard using the provided Google Sheet data from the tab named "November". Provide me a complete Google Apps Script web app with the following characteristics:
+
+GLOBAL DASHBOARD REQUIREMENTS
+
+1. Add a filter bar at the top with options for:All data
+Each individual month (based on Column AH, date format dd/mm/yyyy; extract the month for filtering)
+All dashboard sections, cards, and charts must dynamically update based on the selected filter.
+
+2. KEY METRIC CARDS
+Create four key metric cards showing the total number of tickets with a rating of 1 star or less for:Dubai
+Portugal
+UK
+GR (sum of all 1-star or lower tickets across all markets)
+Data sources:Country: Column O
+Rating: Column AK
+Each card should be clickable. When clicked, display a pop-up with a detailed list including:Issue ID (Column A)
+Issue Status (Column E)
+Property ID (Column M)
+Office (Column P)
+Issue Category (Column AF)
+Subcategory (Column AG)
+
+3. CHARTS SECTION
+Each chart must include a market filter: All markets, Dubai, Portugal, UK.
+
+Chart 1: Timeline Chart (Ticket Volume Over Time)
+Show the number of Issue IDs (Column A) over time for each market, using Column AH (extract month from dd/mm/yyyy).
+When a data point is clicked, display the total Issue IDs from all markets for that date range in a pop-up with the detailed list above.
+
+Chart 2: Donut Chart (Ticket Status Distribution)
+Show the proportion of each ticket status (Column E).
+
+Chart 3: Horizontal Bar Chart (Cases by Category)
+Show the frequency of each category (Column AF), with market filter applied.
+
+Chart 4: Horizontal Bar Chart (Cases by Subcategory)
+Show the frequency of each subcategory (Column AG), with market filter applied.
+
+Chart 5: Pie Chart (Incoming Source)
+Show the distribution of platforms (Column AB). If empty, label as "Null".
+Pie slices should be clickable to display the detailed list above in a pop-up.
+
+Chart 6: Horizontal Bar Chart (Top Repeated Property IDs)
+Show the top 5 property IDs with the most repeated tickets rated ≤ 1 star.
+If "All" is selected, show the top 5 repeated properties across all markets, grouped by market.
+If a specific market is selected, show the top 5 repeated properties within that market, sorted descending.
+
+4. SPECIAL ANALYSIS SECTION
+
+Chart 7: Pie Chart: Missing Due Date Tickets
+Count all tickets where:
+Column AD = "Global GXO - Reviews Post-mortem"
+Due Date (Column C) is missing
++1 Month Overdue Tickets (By Market)
+Exclude tickets with status "CLOSED".
+
+Chart 8: Bar chart: Show tickets overdue by more than 30 days from today, grouped by market (Column O).
+Exclude tickets with status "CLOSED".
+Display counts for Dubai, Portugal, UK, and all markets combined.
