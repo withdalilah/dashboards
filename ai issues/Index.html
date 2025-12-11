@@ -373,7 +373,7 @@
       });
     }
 
-    // Chart 2: Status Donut (Parent)
+    // Chart 2: Status Donut (Parent) - UPDATED WITH CLICK EVENT
     function renderDonut(data) {
       destroyChart('statusChart');
       const counts = {};
@@ -381,19 +381,32 @@
         const s = d.status || "Unknown";
         counts[s] = (counts[s] || 0) + 1;
       });
+      
+      const labels = Object.keys(counts);
 
       const ctx = document.getElementById('statusChart').getContext('2d');
       charts['statusChart'] = new Chart(ctx, {
         type: 'doughnut',
         data: {
-          labels: Object.keys(counts),
+          labels: labels,
           datasets: [{ data: Object.values(counts), backgroundColor: ['#60a5fa', '#34d399', '#f87171', '#fbbf24', '#a78bfa'] }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          onClick: (e, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              const status = labels[index];
+              const drillData = data.filter(d => (d.status || "Unknown") === status);
+              openModal(`Status: ${status}`, drillData);
+            }
+          }
+        }
       });
     }
 
-    // Chart 3: Category (CHILD ONLY)
+    // Chart 3: Category (CHILD ONLY) - UPDATED WITH CLICK EVENT
     function renderBarCategory(data) {
       destroyChart('categoryChart');
       const counts = {};
@@ -411,11 +424,22 @@
           labels: sorted.map(i => i[0]),
           datasets: [{ label: 'Child Cases', data: sorted.map(i => i[1]), backgroundColor: '#818cf8' }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          onClick: (e, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              const category = sorted[index][0];
+              const drillData = data.filter(d => (d.category || "Uncategorized") === category);
+              openModal(`Category: ${category}`, drillData);
+            }
+          }
+        }
       });
     }
 
-    // Chart 4: Subcategory (CHILD ONLY)
+    // Chart 4: Subcategory (CHILD ONLY) - UPDATED WITH CLICK EVENT
     function renderBarSubcategory(data) {
       destroyChart('subcategoryChart');
       const counts = {};
@@ -433,7 +457,18 @@
           labels: sorted.map(i => i[0]),
           datasets: [{ label: 'Child Cases', data: sorted.map(i => i[1]), backgroundColor: '#fbbf24' }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          onClick: (e, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              const subcategory = sorted[index][0];
+              const drillData = data.filter(d => (d.subcategory || "Uncategorized") === subcategory);
+              openModal(`Subcategory: ${subcategory}`, drillData);
+            }
+          }
+        }
       });
     }
 
@@ -467,7 +502,7 @@
       });
     }
 
-    // Chart 6: Repeated Properties (Parent, Rating <= 1)
+    // Chart 6: Repeated Properties (Parent, Rating <= 1) - UPDATED WITH CLICK EVENT
     function renderRepeatedProperties(allParentData, market) {
       destroyChart('propertyChart');
       let relevant = allParentData.filter(d => d.rating > 0 && d.rating <= 1);
@@ -492,11 +527,23 @@
           labels: sorted.map(s => s[0]),
           datasets: [{ label: 'Repeated Issues', data: sorted.map(s => s[1]), backgroundColor: '#ef4444' }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          onClick: (e, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              const labelKey = sorted[index][0]; // "PropID (Country)"
+              // Filter relevant data to match the clicked property/country key
+              const drillData = relevant.filter(d => `${d.propertyId} (${d.country})` === labelKey);
+              openModal(`Property Issues: ${labelKey}`, drillData);
+            }
+          }
+        }
       });
     }
 
-    // --- Special Analysis ---
+    // --- Special Analysis --- UPDATED WITH CLICK EVENT
 
     function renderSpecialAnalysis(allData) {
       // 1. Missing Due Date (Chart 7)
@@ -523,7 +570,24 @@
           labels: ['Dubai', 'Portugal', 'UK', 'Other'],
           datasets: [{ data: Object.values(missingCounts), backgroundColor: ['#3b82f6', '#10b981', '#ef4444', '#cbd5e1'] }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          onClick: (e, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              const label = ['Dubai', 'Portugal', 'UK', 'Other'][index];
+              
+              let drillData = [];
+              if (label === 'Dubai') drillData = missingData.filter(d => d.country.includes('Dubai'));
+              else if (label === 'Portugal') drillData = missingData.filter(d => d.country.includes('Portugal'));
+              else if (label === 'UK') drillData = missingData.filter(d => d.country.includes('Kingdom'));
+              else drillData = missingData.filter(d => !d.country.includes('Dubai') && !d.country.includes('Portugal') && !d.country.includes('Kingdom'));
+              
+              openModal(`Missing Due Date: ${label}`, drillData);
+            }
+          }
+        }
       });
 
       // 2. Overdue > 30 Days (Chart 8)
@@ -554,7 +618,24 @@
           labels: ['Dubai', 'Portugal', 'UK', 'Total'],
           datasets: [{ label: 'Overdue > 30 Days', data: [odCounts.Dubai, odCounts.Portugal, odCounts.UK, odCounts.Total], backgroundColor: ['#3b82f6', '#10b981', '#ef4444', '#6b7280'] }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          onClick: (e, activeEls) => {
+            if (activeEls.length > 0) {
+              const index = activeEls[0].index;
+              const label = ['Dubai', 'Portugal', 'UK', 'Total'][index];
+              
+              let drillData = [];
+              if (label === 'Total') drillData = overdueData;
+              else if (label === 'Dubai') drillData = overdueData.filter(d => d.country.includes('Dubai'));
+              else if (label === 'Portugal') drillData = overdueData.filter(d => d.country.includes('Portugal'));
+              else if (label === 'UK') drillData = overdueData.filter(d => d.country.includes('Kingdom'));
+              
+              openModal(`Overdue > 30 Days: ${label}`, drillData);
+            }
+          }
+        }
       });
     }
 
