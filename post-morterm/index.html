@@ -7,27 +7,20 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            /* --- NEW PALETTE --- 
-               Blue: #8BA8E3
-               Beige: #F3F4E3
-               Coral: #F58F79
-               GreyBlue: #DBDFEC
-               Pink: #FFEAE5
-            */
-
-            --primary-bg: #8BA8E3;      /* Main Blue for buttons/icons */
-            --primary-font: #5A6B8C;    /* Darkened version of palette blue for text readability, or neutral dark */
-            --header-text: #8BA8E3;     /* Colorful headers */
+            /* --- PALETTE --- */
+            --primary-bg: #8BA8E3;      
+            --primary-font: #5A6B8C;    
+            --header-text: #8BA8E3;     
             
-            --card-bg: #FFFFFF;         /* Keep white for contrast/cleanliness */
-            --body-bg: #F3F4E3;         /* Soft Beige Background */
+            --card-bg: #FFFFFF;         
+            --body-bg: #F3F4E3;         
             --border-radius: 12px;
             
             /* Highlight Colors */
-            --highlight-row-bg: #FFEAE5; /* Light Pink for active table rows */
-            --highlight-chart: #F58F79;  /* Coral for selected chart items */
-            --dimmed-chart: #DBDFEC;     /* GreyBlue for non-selected items */
-            --filter-tag-bg: #DBDFEC;    /* GreyBlue for filter tags */
+            --highlight-row-bg: #FFEAE5; 
+            --highlight-chart: #F58F79;  
+            --dimmed-chart: #DBDFEC;     
+            --filter-tag-bg: #DBDFEC;    
             --border-color: #DBDFEC;
         }
 
@@ -36,15 +29,15 @@
             background-color: var(--body-bg);
             margin: 0;
             padding: 20px;
-            padding-bottom: 100px; /* Space for floating drawer */
-            color: #444; /* Standard Dark Grey for readability */
+            padding-bottom: 100px;
+            color: #444;
         }
 
         /* --- Header --- */
         .main-header {
             background-color: var(--card-bg); padding: 20px; border-radius: var(--border-radius);
             margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 15px rgba(139, 168, 227, 0.15); /* Soft Blue shadow */
+            box-shadow: 0 4px 15px rgba(139, 168, 227, 0.15);
         }
         .main-header h1 { margin: 0; font-size: 1.8em; color: var(--header-text); }
         .main-header p { margin: 5px 0 0; color: #888; font-size: 0.9em; }
@@ -85,7 +78,7 @@
             box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
             border-top-left-radius: 16px; border-top-right-radius: 16px;
             z-index: 900;
-            transform: translateY(100%); /* Hidden by default */
+            transform: translateY(100%);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex; flex-direction: column;
         }
@@ -108,7 +101,6 @@
 
         .drawer-content { flex-grow: 1; overflow-y: auto; padding: 0; }
 
-        /* Floating Toggle Button */
         .drawer-toggle-btn {
             position: fixed; bottom: 24px; right: 24px;
             background-color: var(--primary-bg); color: white;
@@ -127,14 +119,12 @@
         th { text-align: left; padding: 14px 24px; background-color: white; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--header-text); }
         td { padding: 12px 24px; border-bottom: 1px solid var(--border-color); color: #555; vertical-align: top; }
         
-        /* Adjusted widths for new columns */
-        td:nth-child(1) { width: 130px; white-space: nowrap; } /* ID */
-        td:nth-child(2) { width: 120px; white-space: nowrap; font-weight: 500; color: #444; } /* Market */
+        td:nth-child(1) { width: 130px; white-space: nowrap; } 
+        td:nth-child(2) { width: 120px; white-space: nowrap; font-weight: 500; color: #444; }
 
         tbody tr { cursor: pointer; transition: background-color 0.1s; }
         tbody tr:hover { background-color: #f9f9f9; }
         
-        /* Active Row Style */
         tbody tr.active-row { 
             background-color: var(--highlight-row-bg); 
             border-left: 4px solid var(--highlight-chart); 
@@ -152,11 +142,9 @@
         }
         .reset-btn:hover { background-color: var(--body-bg); color: var(--primary-bg); border-color: var(--primary-bg); }
 
-        /* Responsive */
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } .span-2 { grid-column: span 2; } }
         @media (max-width: 768px) { .dashboard-grid { display: flex; flex-direction: column; } }
 
-        /* Loader */
         .loader-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; display: flex; justify-content: center; align-items: center; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-bg); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -225,23 +213,20 @@
     </div>
 
 <script>
-    // --- Configuration ---
-    // Updated Strict Palette
     const COLORS = {
-        DEFAULT_PALETTE: ['#8BA8E3', '#F58F79', '#DBDFEC', '#9AB6ED', '#FAB0A0'], // Extended slightly with tints for multi-data charts if needed
-        SINGLE_BAR: '#8BA8E3',  // Primary Blue
-        HIGHLIGHT: '#F58F79',   // Coral
-        DIMMED: '#DBDFEC'       // GreyBlue
+        DEFAULT_PALETTE: ['#8BA8E3', '#F58F79', '#DBDFEC', '#9AB6ED', '#FAB0A0'], 
+        SINGLE_BAR: '#8BA8E3', 
+        HIGHLIGHT: '#F58F79', 
+        DIMMED: '#DBDFEC'
     };
     const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     
-    // --- Global State ---
     let chartMarket, chartStatus, chartCategory, chartSource, chartRepeated;
     let chartDataStore = {};
-    let fullTableData = []; // Stores all rows
+    let fullTableData = []; 
     let currentFilter = null; 
     let selectedRowId = null;
-    let dashboardStats = {}; // Store stats for KPI click logic
+    let dashboardStats = {};
 
     document.addEventListener('DOMContentLoaded', function() {
         google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData();
@@ -263,18 +248,15 @@
         chartDataStore = data.charts;
         fullTableData = data.rawTableData;
 
-        // Render Charts with Events
         chartMarket = renderMarketChart(data.charts.marketCasesByMonth);
         chartStatus = renderStatusChart(data.charts.caseStatus);
         chartCategory = renderCategoryChart(data.charts.casesByCategory);
         chartSource = renderSourceChart(data.charts.casesBySource);
         chartRepeated = renderRepeatedPropsChart(data.charts.repeatedProperties);
 
-        // Initial Table Render
         renderTable(fullTableData);
     }
 
-    // --- INTERACTION: CARDS ---
     function handleCardClick(type) {
         selectedRowId = null;
         document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
@@ -313,19 +295,15 @@
         }
     }
 
-    // --- INTERACTION: CHARTS -> TABLE ---
-    
     function handleChartClick(chartType, selectedValue) {
       if (selectedRowId) {
           selectedRowId = null;
           document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
       }
 
-      // FIX: If selectedValue is null/undefined, reset the filter completely
       if (selectedValue === null || selectedValue === undefined) {
           currentFilter = null;
       } 
-      // Existing toggle logic
       else if (currentFilter && currentFilter.type === chartType && currentFilter.value === selectedValue) {
           currentFilter = null;
       } else {
@@ -336,12 +314,11 @@
       renderTable(filteredData);
       updateFilterBadge();
 
-      // Only open drawer if we actually have a filter applied
       const drawer = document.getElementById('case-drawer');
       if (!drawer.classList.contains('open') && currentFilter) {
           toggleDrawer();
       }
-  }
+    }
 
     function filterData(data, filter) {
         if (!filter) return data; 
@@ -358,7 +335,6 @@
             }
             if (filter.type === 'month') return row.isThisMonth;
             if (filter.type === 'removed') return row.isRemoved;
-            // Use String conversion to ensure safe comparison for Property IDs
             if (filter.type === 'property') return String(row.propertyId) === String(filter.value);
             
             return true;
@@ -376,8 +352,6 @@
             badge.style.display = 'none';
         }
     }
-
-    // --- HIGHLIGHT LOGIC: TABLE -> CHART ---
 
     function highlightAllCharts(row) {
         const catColors = chartDataStore.casesByCategory.categories.map(cat => cat === row.category ? COLORS.HIGHLIGHT : COLORS.SINGLE_BAR);
@@ -406,8 +380,6 @@
         chartMarket.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
     }
 
-    // --- UI Rendering ---
-
     function renderTable(rows) {
         const tbody = document.getElementById('table-body');
         const countLabel = document.getElementById('list-count');
@@ -430,7 +402,6 @@
                 ? `<a href="${row.url}" target="_blank" class="case-link" onclick="event.stopPropagation();">${row.id} <i class="fa-solid fa-external-link-alt" style="font-size:0.7em"></i></a>`
                 : `<strong>${row.id}</strong>`;
 
-            // Updated to show Market Column
             tr.innerHTML = `<td>${linkHtml}</td><td>${row.market}</td><td>${truncateText(row.summary, 120)}</td>`;
             
             tr.addEventListener('click', () => {
@@ -453,8 +424,6 @@
         const isOpen = drawer.classList.toggle('open');
         if (isOpen) btn.classList.add('hidden'); else btn.classList.remove('hidden');
     }
-
-    // --- Chart Configs ---
 
     function renderCategoryChart(data) {
         const options = {
@@ -534,42 +503,45 @@
         return chart;
     }
 
+    // --- UPDATED CHART FUNCTION ---
     function renderMarketChart(data) {
         const options = {
             series: data.series,
             chart: { 
-                type: 'area', height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY,
+                type: 'bar',      // Changed to Bar
+                stacked: true,    // Enabled Stacking
+                height: 320, 
+                toolbar: { show: false }, 
+                fontFamily: FONT_FAMILY,
                 events: {
                     dataPointSelection: (e, chart, config) => {
                          const seriesIndex = config.seriesIndex;
-                         if (seriesIndex === -1) return;
-                         const marketName = config.w.config.series[seriesIndex].name;
-                         handleChartClick('market', marketName);
+                         // In stacked bar, the seriesIndex correctly identifies the clicked segment
+                         if (seriesIndex !== undefined && seriesIndex !== -1) {
+                             const marketName = config.w.config.series[seriesIndex].name;
+                             handleChartClick('market', marketName);
+                         }
                     }
                 }
             },
             colors: COLORS.DEFAULT_PALETTE,
             title: { text: 'Cases by Market (Trend)', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
-            stroke: { curve: 'smooth', width: 2 },
-            fill: { type: 'gradient', gradient: { opacityFrom: 0.6, opacityTo: 0.1 } },
+            // Removed stroke/fill settings that were specific to Area charts
+            dataLabels: { enabled: false }, // Keep cleaner look
             xaxis: { categories: data.categories },
             legend: { position: 'top', horizontalAlign: 'right' },
-            // NEW: Custom Tooltip with Total at TOP, replacing the '4' issue
             tooltip: {
                 shared: true,
                 intersect: false,
                 custom: function({series, seriesIndex, dataPointIndex, w}) {
-                    // 1. Calculate Total First
                     let total = 0;
                     w.config.series.forEach(s => {
                         total += (s.data[dataPointIndex] || 0);
                     });
 
-                    // 2. Build HTML - Total goes first as Header
                     let html = '<div style="background:white; padding:8px 10px; border:1px solid #ccc; font-size:12px; font-family:' + FONT_FAMILY + ';">';
-                    html += `<div style="font-weight:700; border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:6px; color:#333;">Monthly Total: ${total}</div>`;
+                    html += `<div style="font-weight:700; border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:6px; color:#333;">${w.globals.labels[dataPointIndex]}: ${total} Cases</div>`;
 
-                    // 3. List Series
                     w.config.series.forEach((s, i) => {
                         const val = s.data[dataPointIndex] || 0;
                         if (val > 0) {
