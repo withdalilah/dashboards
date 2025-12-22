@@ -103,16 +103,16 @@ function getDashboardData() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAME);
     if (!sheet) throw new Error(`Sheet "${SHEET_NAME}" not found.`);
-    
+
     const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return { error: "No data found." };
-    
+    if (lastRow < 2) return {
+      error: "No data found."
+    };
     // Get Values (Text/Numbers)
     const range = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
     const data = range.getValues();
     // Get Links specifically from Column A (Case ID)
     const linkData = sheet.getRange(2, 1, lastRow - 1, 1).getRichTextValues();
-    
     // --- Data Processing ---
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -124,11 +124,11 @@ function getDashboardData() {
     let reviewRemoved = 0;
     const categoryCounts = {};
     const marketCounts = {};
-    const sourceCounts = {}; 
+    const sourceCounts = {};
     const statusCounts = {};
     const marketCasesByMonth = {};
     const propertyCounts = {};
-    
+
     const rawTableData = [];
 
     data.forEach((row, i) => {
@@ -142,25 +142,25 @@ function getDashboardData() {
       const market = row[1] || 'Unknown';
       const sourceRaw = row[2] ? row[2].toString() : 'Unknown';
       // Ensure PropertyID is a string for consistent filtering
-      // const propertyId = row[5] ? row[5].toString() : "Unknown"; 
-      const cellValue = row[5];
       const rawProp = row[5];
       // Check specifically for null/undefined/empty string, but allow 0
-      const propertyId = (rawProp !== null && rawProp !== undefined && rawProp !== "") 
-          ? rawProp.toString().trim() // Trim removes accidental spaces like "123 "
-          : "Unknown";
+      const propertyId = (rawProp !== null && rawProp !== undefined && rawProp !== "") ?
+        rawProp.toString().trim() // Trim removes accidental spaces like "123 "
+        :
+        "Unknown";
+
       const reviewDateStr = row[6];
       const summary = row[7] || "";
       const category = row[8] || 'Uncategorized';
       const isRemoved = (row[11] && row[11].toString().toLowerCase() === "yes");
       const statusRaw = row[15] ? row[15].toString() : 'Unknown';
-      
+
       // Determine if case is from this month
       let isThisMonth = false;
       if (reviewDateStr && reviewDateStr instanceof Date) {
         if (reviewDateStr.getMonth() === currentMonth && reviewDateStr.getFullYear() === currentYear) {
-           isThisMonth = true;
-           casesThisMonth++;
+          isThisMonth = true;
+          casesThisMonth++;
         }
       }
 
@@ -178,22 +178,20 @@ function getDashboardData() {
         isRemoved: isRemoved,
         isThisMonth: isThisMonth
       });
-
       // 2. Process Counts
       propertyCounts[propertyId] = (propertyCounts[propertyId] || 0) + 1;
-      
+
       const statusLower = statusRaw.toLowerCase();
       if (statusLower === 'ongoing' || statusLower === 'open') ongoingCases++;
       statusCounts[statusRaw] = (statusCounts[statusRaw] || 0) + 1;
-      
-      if (isRemoved) reviewRemoved++;
 
+      if (isRemoved) reviewRemoved++;
       if (reviewDateStr && reviewDateStr instanceof Date) {
         const monthYear = `${reviewDateStr.toLocaleString('default', { month: 'short' })} ${reviewDateStr.getFullYear()}`;
         if (!marketCasesByMonth[market]) marketCasesByMonth[market] = {};
         marketCasesByMonth[market][monthYear] = (marketCasesByMonth[market][monthYear] || 0) + 1;
       }
-      
+
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
       marketCounts[market] = (marketCounts[market] || 0) + 1;
 
@@ -209,20 +207,30 @@ function getDashboardData() {
       .filter(([pid, count]) => pid !== 'Unknown' && count >= 2)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
-      
     const repeatedPropertyData = {
       categories: repeatedProperties.map(item => item[0]),
-      series: [{ name: "Repeats", data: repeatedProperties.map(item => item[1]) }]
+      series: [{
+        name: "Repeats",
+        data: repeatedProperties.map(item => item[1])
+      }]
     };
-
     const findTopItem = (counts) => Object.keys(counts).length ? Object.entries(counts).reduce((a, b) => a[1] > b[1] ? a : b)[0] : 'N/A';
-    const allMonths = [...new Set(Object.values(marketCasesByMonth).flatMap(Object.keys))].sort((a,b) => new Date(a) - new Date(b));
+    const allMonths = [...new Set(Object.values(marketCasesByMonth).flatMap(Object.keys))].sort((a, b) => new Date(a) - new Date(b));
     const marketSeries = Object.keys(marketCasesByMonth).map(mkt => {
       return {
         name: mkt,
         data: allMonths.map(month => marketCasesByMonth[mkt][month] || 0)
       };
     });
+
+    // --- NEW SORTING LOGIC ---
+    // Sort categories from highest count to lowest
+    const sortedCategories = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1]);
+
+    const sortedCategoryLabels = sortedCategories.map(item => item[0]);
+    const sortedCategoryValues = sortedCategories.map(item => item[1]);
+    // ------------------------
 
     return {
       cards: {
@@ -234,15 +242,33 @@ function getDashboardData() {
         reviewRemoved: reviewRemoved
       },
       charts: {
-        marketCasesByMonth: { series: marketSeries, categories: allMonths },
-        casesBySource: { labels: Object.keys(sourceCounts), series: Object.values(sourceCounts) },
-        casesByCategory: { categories: Object.keys(categoryCounts), series: [{ name: 'Cases', data: Object.values(categoryCounts) }] },
-        caseStatus: { labels: Object.keys(statusCounts), series: Object.values(statusCounts) },
+        marketCasesByMonth: {
+          series: marketSeries,
+          categories: allMonths
+        },
+        casesBySource: {
+          labels: Object.keys(sourceCounts),
+          series: Object.values(sourceCounts)
+        },
+        // UPDATED: Using sorted arrays
+        casesByCategory: {
+          categories: sortedCategoryLabels,
+          series: [{
+            name: 'Cases',
+            data: sortedCategoryValues
+          }]
+        },
+        caseStatus: {
+          labels: Object.keys(statusCounts),
+          series: Object.values(statusCounts)
+        },
         repeatedProperties: repeatedPropertyData
       },
-      rawTableData: rawTableData 
+      rawTableData: rawTableData
     };
   } catch (e) {
-    return { error: e.message };
+    return {
+      error: e.message
+    };
   }
 }
