@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <style>
+      :root {
+        --bg-beige: #F3F4E3;
+        --primary-blue: #8BA8E3;
+        --accent-coral: #F58F79;
+        --secondary-grey: #DBDFEC;
+        --active-pink: #FFEAE5;
+        --card-white: #FFFFFF;
+        --text-dark: #444444;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
+        background-color: var(--bg-beige);
+        color: var(--text-dark);
+        margin: 0; padding-bottom: 40px;
+      }
+      .bg-primary { background-color: var(--primary-blue); }
+      .text-primary { color: var(--primary-blue); }
+      .kpi-card {
+        background-color: var(--card-white);
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+      .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
+      .custom-select {
+        background-color: var(--card-white);
+        border: 1px solid var(--secondary-grey);
+        color: var(--text-dark);
+        border-radius: 8px;
+      }
+      .btn-primary {
+        background-color: var(--primary-blue);
+        color: white;
+        border-radius: 8px;
+        transition: background 0.2s;
+      }
+      .btn-primary:hover { opacity: 0.9; }
+      .loader {
+        border: 4px solid var(--secondary-grey);
+        border-top: 4px solid var(--primary-blue);
+        border-radius: 50%;
+        width: 40px; height: 40px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      .data-row { cursor: default; border-left: 4px solid transparent; }
+      .data-row:hover { background-color: #f9fafb; }
+    </style>
+  </head>
+  <body class="p-4 md:p-8">
+
+    <!-- HEADER -->
+    <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-chart-pie text-2xl text-primary"></i>
+        <h1 class="text-2xl font-bold text-gray-700">Claims Dashboard 2025</h1>
+      </div>
+      <div class="flex gap-2 w-full md:w-auto">
+        <select id="selectMonth" class="custom-select p-2 flex-1 md:w-32 outline-none">
+          <option value="All" selected>All Months</option>
+          <option value="1">January</option>
+          <option value="2">February</option>
+          <option value="3">March</option>
+          <option value="4">April</option>
+          <option value="5">May</option>
+          <option value="6">June</option>
+          <option value="7">July</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+        </select>
+        <select id="selectYear" class="custom-select p-2 flex-1 md:w-24 outline-none">
+          <option value="2024">2024</option>
+          <option value="2025">2025</option>
+        </select>
+        <button onclick="fetchData()" class="btn-primary px-6 py-2 font-medium shadow-sm">Filter</button>
+      </div>
+    </header>
+
+    <div id="loader" class="fixed inset-0 bg-white/80 z-50 flex justify-center items-center hidden"><div class="loader"></div></div>
+
+    <!-- KPIS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="kpi-card p-6 border-t-4 border-[#8BA8E3]">
+        <div class="flex justify-between items-start">
+          <div><p class="text-sm font-semibold text-gray-400 uppercase">Won Payout</p><h3 class="text-2xl font-bold mt-1 text-gray-700" id="kpiWonVal">€0</h3></div>
+          <div class="w-10 h-10 rounded-full bg-[#DBDFEC]/30 flex items-center justify-center text-[#8BA8E3]"><i class="fa-solid fa-trophy"></i></div>
+        </div>
+        <p class="text-xs text-[#8BA8E3] mt-2 font-medium" id="kpiWonCount">0 cases</p>
+      </div>
+      <div class="kpi-card p-6 border-t-4 border-[#F58F79]">
+        <div class="flex justify-between items-start">
+          <div><p class="text-sm font-semibold text-gray-400 uppercase">Lost Amount</p><h3 class="text-2xl font-bold mt-1 text-gray-700" id="kpiLostVal">€0</h3></div>
+          <div class="w-10 h-10 rounded-full bg-[#FFEAE5] flex items-center justify-center text-[#F58F79]"><i class="fa-solid fa-circle-xmark"></i></div>
+        </div>
+        <p class="text-xs text-[#F58F79] mt-2 font-medium" id="kpiLostCount">0 cases</p>
+      </div>
+      <div class="kpi-card p-6 border-t-4 border-[#DBDFEC]">
+        <div class="flex justify-between items-start">
+          <div><p class="text-sm font-semibold text-gray-400 uppercase">Dropped</p><h3 class="text-2xl font-bold mt-1 text-gray-700" id="kpiDroppedVal">€0</h3></div>
+          <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400"><i class="fa-solid fa-ban"></i></div>
+        </div>
+        <p class="text-xs text-gray-400 mt-2 font-medium" id="kpiDroppedCount">0 cases</p>
+      </div>
+      <div class="kpi-card p-6 border-t-4 border-yellow-400">
+        <div class="flex justify-between items-start">
+          <div><p class="text-sm font-semibold text-gray-400 uppercase">Rejected</p><h3 class="text-2xl font-bold mt-1 text-gray-700" id="kpiRejectedVal">€0</h3></div>
+          <div class="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500"><i class="fa-solid fa-gavel"></i></div>
+        </div>
+        <p class="text-xs text-yellow-500 mt-2 font-medium" id="kpiRejectedCount">0 cases</p>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW 1 -->
+    <div class="w-full bg-white rounded-xl shadow-sm p-6 mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-bold text-gray-700">Claims Trend (Yearly)</h2>
+        <span class="text-xs px-2 py-1 bg-[#F3F4E3] text-[#8BA8E3] rounded border border-[#DBDFEC]">Trend</span>
+      </div>
+      <div id="chartTimeline"></div>
+    </div>
+
+    <!-- CHARTS ROW 2 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-bold text-gray-700 mb-4">Overall Status Distribution</h2>
+        <div id="chartStatus" class="flex justify-center"></div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-bold text-gray-700 mb-4">Top Subjects (Won vs Lost)</h2>
+        <div id="chartSubjects"></div>
+      </div>
+    </div>
+
+    <!-- NEW SECTION: ISSUE CATEGORIES (Dynamic Title) -->
+    <div class="w-full bg-white rounded-xl shadow-sm p-6 mb-8">
+      <h2 class="text-lg font-bold text-gray-700 mb-4" id="issueChartTitle">Top Issue Categories</h2>
+      <div id="chartIssues"></div>
+    </div>
+
+    <!-- PROPERTY IDs -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-[#DBDFEC] bg-white">
+        <h3 class="text-xl font-bold text-[#8BA8E3]"><i class="fa-solid fa-building mr-2"></i>Most Recurring Property IDs (Yearly Data)</h3>
+        <p class="text-xs text-gray-400 mt-1">This list always shows the top properties for the entire year.</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-[#DBDFEC] text-gray-600 text-sm uppercase tracking-wide">
+              <th class="px-6 py-3 font-semibold">Market</th>
+              <th class="px-6 py-3 font-semibold">Top 1 ID</th>
+              <th class="px-6 py-3 font-semibold">Top 2 ID</th>
+              <th class="px-6 py-3 font-semibold">Top 3 ID</th>
+            </tr>
+          </thead>
+          <tbody id="propertyTableBody" class="text-sm text-gray-600 bg-white"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      const colors = { primary: '#8BA8E3', accent: '#F58F79', grey: '#DBDFEC', pink: '#FFEAE5', text: '#444444' };
+      const palette = ['#8BA8E3', '#F58F79', '#10B981', '#FCD34D', '#6366F1'];
+      let chartTimeline, chartStatus, chartSubjects, chartIssues;
+
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('selectMonth').value = 'All';
+        document.getElementById('selectYear').value = 2024;
+        fetchData();
+      });
+
+      function fetchData() {
+        document.getElementById('loader').classList.remove('hidden');
+        const m = document.getElementById('selectMonth').value;
+        const y = document.getElementById('selectYear').value;
+        google.script.run
+          .withSuccessHandler(renderDashboard)
+          .withFailureHandler(err => { alert(err.message); document.getElementById('loader').classList.add('hidden'); })
+          .getDashboardData(m, y);
+      }
+
+      function renderDashboard(jsonString) {
+        const data = JSON.parse(jsonString);
+        const formatCurrency = (val) => new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
+        const isAllMonths = document.getElementById('selectMonth').value === 'All';
+
+        // KPIs
+        document.getElementById('kpiWonVal').textContent = formatCurrency(data.kpi.won.value);
+        document.getElementById('kpiWonCount').textContent = data.kpi.won.count + " cases";
+        document.getElementById('kpiLostVal').textContent = formatCurrency(data.kpi.lost.value);
+        document.getElementById('kpiLostCount').textContent = data.kpi.lost.count + " cases";
+        document.getElementById('kpiDroppedVal').textContent = formatCurrency(data.kpi.dropped.value);
+        document.getElementById('kpiDroppedCount').textContent = data.kpi.dropped.count + " cases";
+        document.getElementById('kpiRejectedVal').textContent = formatCurrency(data.kpi.rejected.value);
+        document.getElementById('kpiRejectedCount').textContent = data.kpi.rejected.count + " cases";
+
+        renderTimeline(data.timeline);
+        renderStatus(data.marketStatus);
+        renderSubjects(data.topSubjects);
+        renderTable(data.topProperties);
+
+        // INTELLIGENT CHART: Trend vs Snapshot
+        if (isAllMonths) {
+          document.getElementById('issueChartTitle').textContent = "Issue Category Trend (Yearly Evolution)";
+          renderIssueTrend(data.categoryTrend);
+        } else {
+          document.getElementById('issueChartTitle').textContent = "Top Issue Categories (Monthly Snapshot)";
+          renderIssueSnapshot(data.issueCounts);
+        }
+
+        document.getElementById('loader').classList.add('hidden');
+      }
+
+      // 1. Line Chart for All Months
+      function renderIssueTrend(trendData) {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        // trendData = [{name: 'Subj A', data: [1,0,2...]}, ...]
+        const options = {
+          series: trendData,
+          chart: { type: 'line', height: 350, toolbar: {show:false}, fontFamily: 'Roboto, sans-serif' },
+          stroke: { curve: 'smooth', width: 2 },
+          xaxis: { categories: months },
+          colors: palette,
+          grid: { borderColor: colors.grey },
+          legend: { position: 'bottom' }
+        };
+        if(chartIssues) chartIssues.destroy();
+        chartIssues = new ApexCharts(document.querySelector("#chartIssues"), options);
+        chartIssues.render();
+      }
+
+      // 2. Bar Chart for Specific Month
+      function renderIssueSnapshot(barData) {
+        // barData = [{category: 'Name', count: 10}, ...]
+        const options = {
+          series: [{ name: 'Cases', data: barData.map(d => d.count) }],
+          chart: { type: 'bar', height: 350, toolbar: {show:false}, fontFamily: 'Roboto, sans-serif' },
+          plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%' } },
+          dataLabels: { enabled: true },
+          xaxis: { categories: barData.map(d => d.category) },
+          colors: [colors.primary],
+          grid: { borderColor: colors.grey }
+        };
+        if(chartIssues) chartIssues.destroy();
+        chartIssues = new ApexCharts(document.querySelector("#chartIssues"), options);
+        chartIssues.render();
+      }
+
+      function renderTimeline(data) {
+        let allDates = new Set(); Object.values(data).forEach(mkt => Object.keys(mkt).forEach(d => allDates.add(d)));
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        let cats = Array.from(allDates).sort((a,b) => {
+           let [ma, ya] = a.split(" "); let [mb, yb] = b.split(" ");
+           if(ya !== yb) return ya - yb; return months.indexOf(ma) - months.indexOf(mb);
+        });
+        let series = []; for (const [mkt, map] of Object.entries(data)) { series.push({ name: mkt, data: cats.map(c => map[c] || 0) }); }
+        const options = { series: series, chart: { type: 'area', height: 300, toolbar: {show:false}, fontFamily: 'Roboto, sans-serif' }, colors: palette, stroke: { curve: 'smooth', width: 2 }, fill: { type: 'gradient', gradient: { shadeIntensity:1, opacityFrom:0.7, opacityTo:0.2, stops:[0,90,100] }}, xaxis: { categories: cats }, grid: { borderColor: colors.grey } };
+        if(chartTimeline) chartTimeline.destroy(); chartTimeline = new ApexCharts(document.querySelector("#chartTimeline"), options); chartTimeline.render();
+      }
+
+      function renderStatus(data) {
+        let w=0, l=0, d=0; Object.values(data).forEach(m => { w+=m.Won; l+=m.Lost; d+=m.Dropped; });
+        if(w===0 && l===0 && d===0) { document.querySelector("#chartStatus").innerHTML = "<p class='text-center text-gray-400 mt-10'>No data</p>"; return; }
+        const options = { series: [w, l, d], labels: ['Won', 'Lost', 'Dropped'], chart: { type: 'donut', height: 300, fontFamily: 'Roboto, sans-serif' }, colors: [colors.primary, colors.accent, colors.grey], plotOptions: { pie: { donut: { size: '70%', labels: { show: true, total: { show: true, label: 'Total' } } } } }, legend: { position: 'bottom' } };
+        if(chartStatus) chartStatus.destroy(); chartStatus = new ApexCharts(document.querySelector("#chartStatus"), options); chartStatus.render();
+      }
+
+      function renderSubjects(data) {
+        const options = { series: [{ name: 'Won Subject', data: data.map(d=>d.wonCount) }, { name: 'Lost Subject', data: data.map(d=>d.lostCount) }], chart: { type: 'bar', height: 300, toolbar: {show:false}, fontFamily: 'Roboto, sans-serif' }, colors: [colors.primary, colors.accent], plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 4 } }, xaxis: { categories: data.map(d=>d.market) }, grid: { borderColor: colors.grey }, legend: { position: 'top' } };
+        if(chartSubjects) chartSubjects.destroy(); chartSubjects = new ApexCharts(document.querySelector("#chartSubjects"), options); chartSubjects.render();
+      }
+
+      function renderTable(data) {
+        const tbody = document.getElementById('propertyTableBody'); tbody.innerHTML = '';
+        if(!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">No Property Data Found</td></tr>`; return; }
+        data.forEach(r => {
+          let tr = document.createElement('tr'); tr.className = "data-row border-b border-[#DBDFEC]";
+          const f = (i) => i ? `${i.id} <span class="text-xs text-gray-400">(${i.count})</span>` : '-';
+          tr.innerHTML = `<td class="px-6 py-4 font-bold text-gray-700">${r.market}</td><td class="px-6 py-4">${f(r.items[0])}</td><td class="px-6 py-4">${f(r.items[1])}</td><td class="px-6 py-4">${f(r.items[2])}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+    </script>
+  </body>
+</html>
