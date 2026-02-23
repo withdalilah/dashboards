@@ -7,16 +7,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            /* --- PALETTE --- */
             --primary-bg: #8BA8E3;      
             --primary-font: #5A6B8C;    
             --header-text: #8BA8E3;     
-            
             --card-bg: #FFFFFF;         
             --body-bg: #F3F4E3;         
             --border-radius: 12px;
-            
-            /* Highlight Colors */
             --highlight-row-bg: #FFEAE5; 
             --highlight-chart: #F58F79;  
             --dimmed-chart: #DBDFEC;     
@@ -24,39 +20,33 @@
             --border-color: #DBDFEC;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--body-bg);
-            margin: 0;
-            padding: 20px;
-            padding-bottom: 100px;
-            color: #444;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--body-bg); margin: 0; padding: 0; color: #444; display: flex; }
+
+        /* --- Sidebar Navigation --- */
+        .sidebar { width: 250px; background-color: var(--card-bg); height: 100vh; position: fixed; left: 0; top: 0; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.05); overflow-x: hidden; }
+        .sidebar.collapsed { width: 70px; }
+        .sidebar-header { padding: 20px; display: flex; align-items: center; justify-content: space-between; color: var(--header-text); border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        .sidebar-header h2 { margin: 0; font-size: 1.2em; display: flex; align-items: center; gap: 10px;}
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; margin-top: 10px; }
+        .sidebar-menu li { padding: 15px 24px; cursor: pointer; display: flex; align-items: center; gap: 15px; color: var(--primary-font); transition: 0.2s; white-space: nowrap; font-weight: 500; }
+        .sidebar-menu li:hover, .sidebar-menu li.active { background-color: var(--primary-bg); color: white; }
+
+        /* --- Main Content Area --- */
+        .main-content { margin-left: 250px; padding: 20px; padding-bottom: 100px; width: calc(100% - 250px); transition: margin-left 0.3s, width 0.3s; box-sizing: border-box; min-height: 100vh; }
+        .sidebar.collapsed ~ .main-content { margin-left: 70px; width: calc(100% - 70px); }
 
         /* --- Header --- */
-        .main-header {
-            background-color: var(--card-bg); padding: 20px; border-radius: var(--border-radius);
-            margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 15px rgba(139, 168, 227, 0.15);
-        }
+        .main-header { background-color: var(--card-bg); padding: 20px; border-radius: var(--border-radius); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(139, 168, 227, 0.15); flex-wrap: wrap; gap: 15px; }
         .main-header h1 { margin: 0; font-size: 1.8em; color: var(--header-text); }
         .main-header p { margin: 5px 0 0; color: #888; font-size: 0.9em; }
 
+        .global-filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;}
+        .global-filter-bar select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); outline: none; font-family: inherit; color: #555; background: #fafafa; }
+
         /* --- KPI Cards --- */
         .kpi-container { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
-        .kpi-card {
-            background-color: var(--card-bg); border-radius: var(--border-radius);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); padding: 16px; flex: 1 1 150px;
-            display: flex; flex-direction: column; justify-content: space-between; min-width: 140px;
-            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; 
-            border: 1px solid transparent;
-        }
-        .kpi-card:hover { 
-            transform: translateY(-3px); 
-            box-shadow: 0 8px 16px rgba(139, 168, 227, 0.2); 
-            border-color: var(--primary-bg);
-        } 
-
+        .kpi-card { background-color: var(--card-bg); border-radius: var(--border-radius); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); padding: 16px; flex: 1 1 150px; display: flex; flex-direction: column; justify-content: space-between; min-width: 140px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid transparent; }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(139, 168, 227, 0.2); border-color: var(--primary-bg); } 
         .kpi-card h3 { margin: 0 0 10px 0; font-size: 0.85em; text-transform: uppercase; color: #999; letter-spacing: 0.5px;}
         .kpi-card .value-container { display: flex; justify-content: space-between; align-items: flex-end; }
         .kpi-card .result { font-size: 1.8em; font-weight: 700; color: #444; }
@@ -64,120 +54,131 @@
 
         /* --- Charts Grid --- */
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-        .chart-card {
-            background-color: var(--card-bg); padding: 16px; border-radius: var(--border-radius);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); min-height: 350px; 
-        }
+        .chart-card { background-color: var(--card-bg); padding: 16px; border-radius: var(--border-radius); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); min-height: 350px; }
         .span-2 { grid-column: span 2; }
         .span-1 { grid-column: span 1; }
 
         /* --- Floating Bottom Drawer --- */
-        .case-drawer {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 450px;
-            background-color: white;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-            border-top-left-radius: 16px; border-top-right-radius: 16px;
-            z-index: 900;
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex; flex-direction: column;
-        }
-
+        .case-drawer { position: fixed; bottom: 0; left: 250px; width: calc(100% - 250px); height: 450px; background-color: white; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); border-top-left-radius: 16px; border-top-right-radius: 16px; z-index: 900; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s, width 0.3s; display: flex; flex-direction: column; }
+        .sidebar.collapsed ~ .case-drawer { left: 70px; width: calc(100% - 70px); }
         .case-drawer.open { transform: translateY(0); }
-
-        .drawer-header {
-            padding: 15px 24px; border-bottom: 1px solid var(--border-color);
-            display: flex; justify-content: space-between; align-items: center;
-            background-color: #FAFAFA; border-top-left-radius: 16px; border-top-right-radius: 16px;
-        }
-        
+        .drawer-header { padding: 15px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background-color: #FAFAFA; border-top-left-radius: 16px; border-top-right-radius: 16px; }
         .filter-tags { display: flex; gap: 10px; align-items: center; }
-        .filter-badge {
-            background-color: var(--filter-tag-bg); color: #555;
-            padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600;
-            display: flex; align-items: center; gap: 6px;
-            border: 1px solid #cdd1e0;
-        }
-
+        .filter-badge { background-color: var(--filter-tag-bg); color: #555; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; display: flex; align-items: center; gap: 6px; border: 1px solid #cdd1e0; }
         .drawer-content { flex-grow: 1; overflow-y: auto; padding: 0; }
-
-        .drawer-toggle-btn {
-            position: fixed; bottom: 24px; right: 24px;
-            background-color: var(--primary-bg); color: white;
-            border: none; border-radius: 50px; padding: 14px 28px;
-            font-size: 1em; font-weight: 600;
-            box-shadow: 0 4px 12px rgba(139, 168, 227, 0.5);
-            cursor: pointer; z-index: 950;
-            display: flex; align-items: center; gap: 10px;
-            transition: all 0.2s;
-        }
+        .drawer-toggle-btn { position: fixed; bottom: 24px; right: 24px; background-color: var(--primary-bg); color: white; border: none; border-radius: 50px; padding: 14px 28px; font-size: 1em; font-weight: 600; box-shadow: 0 4px 12px rgba(139, 168, 227, 0.5); cursor: pointer; z-index: 950; display: flex; align-items: center; gap: 10px; transition: all 0.2s; }
         .drawer-toggle-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(139, 168, 227, 0.6); background-color: #7a98d3; }
         .drawer-toggle-btn.hidden { display: none; }
 
-        /* Table Styling */
+        /* Insight/Case Table Styling */
         table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
         th { text-align: left; padding: 14px 24px; background-color: white; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--header-text); }
         td { padding: 12px 24px; border-bottom: 1px solid var(--border-color); color: #555; vertical-align: top; }
         
-        td:nth-child(1) { width: 130px; white-space: nowrap; } 
-        td:nth-child(2) { width: 120px; white-space: nowrap; font-weight: 500; color: #444; }
-
-        tbody tr { cursor: pointer; transition: background-color 0.1s; }
-        tbody tr:hover { background-color: #f9f9f9; }
-        
-        tbody tr.active-row { 
-            background-color: var(--highlight-row-bg); 
-            border-left: 4px solid var(--highlight-chart); 
-        }
-        tbody tr.active-row td { font-weight: 500; color: #333; }
+        #table-body tr { cursor: pointer; transition: background-color 0.1s; }
+        #table-body tr:hover { background-color: #f9f9f9; }
+        #table-body tr.active-row { background-color: var(--highlight-row-bg); border-left: 4px solid var(--highlight-chart); }
+        #table-body tr.active-row td { font-weight: 500; color: #333; }
 
         a.case-link { color: var(--primary-bg); text-decoration: none; font-weight: bold; }
         a.case-link:hover { text-decoration: underline; color: var(--highlight-chart); }
 
-        .reset-btn {
-            background: none; border: 1px solid var(--border-color); padding: 6px 12px;
-            border-radius: 6px; cursor: pointer; font-size: 0.85em;
-            display: flex; align-items: center; gap: 6px; color: #666;
-            background-color: white;
-        }
+        .reset-btn { background: none; border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: 500; display: flex; align-items: center; gap: 6px; color: #666; background-color: white; }
         .reset-btn:hover { background-color: var(--body-bg); color: var(--primary-bg); border-color: var(--primary-bg); }
 
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } .span-2 { grid-column: span 2; } }
         @media (max-width: 768px) { .dashboard-grid { display: flex; flex-direction: column; } }
 
-        .loader-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .loader-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-bg); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="loader-wrapper" class="loader-container"><div class="loader"></div></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2 class="logo-text"><i class="fa-solid fa-layer-group"></i> Operations</h2>
+            <i class="fa-solid fa-bars" style="cursor:pointer;" onclick="toggleSidebar()"></i>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="active" onclick="switchPage('dashboard')" id="menu-dashboard">
+                <i class="fa-solid fa-chart-line" style="min-width: 20px; text-align: center;"></i> <span class="menu-text">Dashboard</span>
+            </li>
+            <li onclick="switchPage('resolution')" id="menu-resolution">
+                <i class="fa-solid fa-lightbulb" style="min-width: 20px; text-align: center;"></i> <span class="menu-text">Resolution Insights</span>
+            </li>
+        </ul>
+    </div>
 
-    <div id="dashboard-content" style="visibility: hidden;">
-        <div class="main-header">
-            <div><h1><i class="fa-solid fa-chart-line"></i> Dashboard</h1><p>Post-Mortem Feedback & Issues Overview</p></div>
-            <button class="reset-btn" onclick="resetDashboard()" title="Reset all filters and selection">
-                <i class="fa-solid fa-rotate-left"></i> Reset Dashboard
-            </button>
+    <div class="main-content" id="main-content" style="visibility: hidden;">
+        <div id="loader-wrapper" class="loader-container"><div class="loader"></div></div>
+
+        <div id="dashboard-page">
+            <div class="main-header">
+                <div><h1><i class="fa-solid fa-chart-line"></i> Dashboard</h1><p>Post-Mortem Feedback & Issues Overview</p></div>
+                <div class="global-filter-bar">
+                    <label style="font-size: 0.85em; font-weight: 600; color: #888;">Year:</label>
+                    <select id="global-year" onchange="applyGlobalFilter()"><option value="All">All Years</option></select>
+                    
+                    <label style="font-size: 0.85em; font-weight: 600; color: #888; margin-left: 10px;">Month:</label>
+                    <select id="global-month" onchange="applyGlobalFilter()">
+                        <option value="All">All Months</option>
+                        <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                        <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                        <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                        <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                    </select>
+
+                    <button class="reset-btn" onclick="resetDashboard()" title="Reset all filters and selection" style="margin-left: 10px;">
+                        <i class="fa-solid fa-rotate-left"></i> Reset Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <div class="kpi-container">
+                <div class="kpi-card" onclick="handleCardClick('total')"><h3>Total Cases</h3><div class="value-container"><span id="total-cases" class="result">...</span><i class="fa-solid fa-briefcase icon"></i></div></div>
+                <div class="kpi-card" onclick="handleCardClick('ongoing')"><h3>Ongoing</h3><div class="value-container"><span id="ongoing-cases" class="result">...</span><i class="fa-solid fa-spinner icon"></i></div></div>
+                <div class="kpi-card" onclick="handleCardClick('month')"><h3>This Month</h3><div class="value-container"><span id="cases-this-month" class="result">...</span><i class="fa-solid fa-calendar-day icon"></i></div></div>
+                <div class="kpi-card" onclick="handleCardClick('top-category')"><h3>Top Category</h3><div class="value-container"><span id="top-category" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-tags icon"></i></div></div>
+                <div class="kpi-card" onclick="handleCardClick('top-market')"><h3>Top Market</h3><div class="value-container"><span id="top-market" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-globe icon"></i></div></div>
+                <div class="kpi-card" onclick="handleCardClick('removed')"><h3>Review Removed</h3><div class="value-container"><span id="review-removed" class="result">...</span><i class="fa-solid fa-eraser icon"></i></div></div>
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="chart-card span-2"><div id="chart1"></div></div>
+                <div class="chart-card span-1"><div id="chartStatus"></div></div>
+                <div class="chart-card span-1"><div id="chartCategory"></div></div>
+                <div class="chart-card span-1"><div id="chartSource"></div></div>
+                <div class="chart-card span-1"><div id="chartRepeatedProps"></div></div>
+            </div>
         </div>
 
-        <div class="kpi-container">
-            <div class="kpi-card" onclick="handleCardClick('total')"><h3>Total Cases</h3><div class="value-container"><span id="total-cases" class="result">...</span><i class="fa-solid fa-briefcase icon"></i></div></div>
-            <div class="kpi-card" onclick="handleCardClick('ongoing')"><h3>Ongoing</h3><div class="value-container"><span id="ongoing-cases" class="result">...</span><i class="fa-solid fa-spinner icon"></i></div></div>
-            <div class="kpi-card" onclick="handleCardClick('month')"><h3>This Month</h3><div class="value-container"><span id="cases-this-month" class="result">...</span><i class="fa-solid fa-calendar-day icon"></i></div></div>
-            <div class="kpi-card" onclick="handleCardClick('top-category')"><h3>Top Category</h3><div class="value-container"><span id="top-category" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-tags icon"></i></div></div>
-            <div class="kpi-card" onclick="handleCardClick('top-market')"><h3>Top Market</h3><div class="value-container"><span id="top-market" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-globe icon"></i></div></div>
-            <div class="kpi-card" onclick="handleCardClick('removed')"><h3>Review Removed</h3><div class="value-container"><span id="review-removed" class="result">...</span><i class="fa-solid fa-eraser icon"></i></div></div>
+        <div id="resolution-page" style="display: none;">
+            <div class="main-header">
+                <div>
+                    <h1><i class="fa-solid fa-lightbulb"></i> Resolution Insights</h1>
+                    <p>In-depth look into handled resolutions and strategic definitions</p>
+                </div>
+            </div>
+            
+            <div id="resolution-summary-container" class="kpi-container" style="margin-bottom: 30px;">
+                </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="color: var(--primary-font); font-size: 1.3em; margin: 0; padding-left: 5px;">
+                    <i class="fa-solid fa-book-open" style="margin-right: 8px;"></i> Strategy Definitions
+                </h2>
+                <div style="position: relative;">
+                    <i class="fa-solid fa-search" style="position: absolute; left: 12px; top: 12px; color: #aaa;"></i>
+                    <input type="text" id="def-search" placeholder="Search issues or solutions..." style="padding: 10px 12px 10px 35px; border-radius: 8px; border: 1px solid var(--border-color); width: 250px; outline: none; font-family: inherit; font-size: 0.9em;" onkeyup="filterDefinitions()">
+                </div>
+            </div>
+
+            <div id="resolution-definitions-container" style="display: flex; flex-direction: column; gap: 20px;">
+                </div>
         </div>
-        
-        <div class="dashboard-grid">
-            <div class="chart-card span-2"><div id="chart1"></div></div>
-            <div class="chart-card span-1"><div id="chartStatus"></div></div>
-            <div class="chart-card span-1"><div id="chartCategory"></div></div>
-            <div class="chart-card span-1"><div id="chartSource"></div></div>
-            <div class="chart-card span-1"><div id="chartRepeatedProps"></div></div>
-        </div>
+
     </div>
 
     <button id="drawer-btn" class="drawer-toggle-btn" onclick="toggleDrawer()">
@@ -200,25 +201,15 @@
         <div class="drawer-content">
             <table id="data-table">
                 <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Market</th>
-                        <th>Summary</th>
-                    </tr>
+                    <tr><th style="width:130px;">ID</th><th style="width:120px;">Market</th><th>Summary</th></tr>
                 </thead>
-                <tbody id="table-body">
-                    </tbody>
+                <tbody id="table-body"></tbody>
             </table>
         </div>
     </div>
 
 <script>
-    const COLORS = {
-        DEFAULT_PALETTE: ['#8BA8E3', '#F58F79', '#DBDFEC', '#9AB6ED', '#FAB0A0'], 
-        SINGLE_BAR: '#8BA8E3', 
-        HIGHLIGHT: '#F58F79', 
-        DIMMED: '#DBDFEC'
-    };
+    const COLORS = { DEFAULT_PALETTE: ['#8BA8E3', '#F58F79', '#DBDFEC', '#9AB6ED', '#FAB0A0'], SINGLE_BAR: '#8BA8E3', HIGHLIGHT: '#F58F79', DIMMED: '#DBDFEC' };
     const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     
     let chartMarket, chartStatus, chartCategory, chartSource, chartRepeated;
@@ -227,21 +218,180 @@
     let currentFilter = null; 
     let selectedRowId = null;
     let dashboardStats = {};
+    let isYearDropdownPopulated = false;
 
     document.addEventListener('DOMContentLoaded', function() {
-        google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData();
+        // Load default dashboard
+        google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData("All", "All");
     });
+
+    // --- Sidebar & Navigation Functions ---
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        const texts = document.querySelectorAll('.menu-text');
+        const logo = document.querySelector('.logo-text');
+        
+        const isCollapsed = document.getElementById('sidebar').classList.contains('collapsed');
+        texts.forEach(t => t.style.display = isCollapsed ? 'none' : 'inline');
+        logo.style.display = isCollapsed ? 'none' : 'flex';
+
+        // Trigger resize event to make charts fit the new width dynamically
+        setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 300);
+    }
+
+    function switchPage(page) {
+        document.getElementById('dashboard-page').style.display = page === 'dashboard' ? 'block' : 'none';
+        document.getElementById('resolution-page').style.display = page === 'resolution' ? 'block' : 'none';
+
+        document.getElementById('menu-dashboard').classList.toggle('active', page === 'dashboard');
+        document.getElementById('menu-resolution').classList.toggle('active', page === 'resolution');
+
+        // Drawer behaviour 
+        const drawerBtn = document.getElementById('drawer-btn');
+        const caseDrawer = document.getElementById('case-drawer');
+        if (page !== 'dashboard') {
+            drawerBtn.style.display = 'none';
+            if(caseDrawer.classList.contains('open')) toggleDrawer();
+        } else {
+            drawerBtn.style.display = 'flex';
+        }
+
+        // Fetch Resolution Data if empty
+        if (page === 'resolution' && !document.getElementById('resolution-definitions-container').innerHTML.trim()) {
+            document.getElementById('loader-wrapper').style.display = 'flex';
+            google.script.run.withSuccessHandler(renderResolution).withFailureHandler(showError).getResolutionInsightsData();
+        }
+    }
+
+    // --- Resolution Search Filter ---
+    function filterDefinitions() {
+        const query = document.getElementById('def-search').value.toLowerCase();
+        const cards = document.querySelectorAll('.def-card');
+        
+        cards.forEach(card => {
+            const text = card.innerText.toLowerCase();
+            card.style.display = text.includes(query) ? 'block' : 'none';
+        });
+    }
+
+    // --- Global Filtering Functions ---
+    function applyGlobalFilter() {
+        const selectedYear = document.getElementById('global-year').value;
+        const selectedMonth = document.getElementById('global-month').value;
+        
+        document.getElementById('loader-wrapper').style.display = 'flex';
+        google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData(selectedMonth, selectedYear);
+    }
+
+    function renderResolution(response) {
+        document.getElementById('loader-wrapper').style.display = 'none';
+        
+        const summaryContainer = document.getElementById('resolution-summary-container');
+        const defsContainer = document.getElementById('resolution-definitions-container');
+
+        if (response.error) { 
+            defsContainer.innerHTML = `<div style="color:red; padding: 20px; background: white; border-radius: 12px;">Error: ${response.error}</div>`; 
+            return; 
+        }
+        
+        const summary = response.summary;
+        const defs = response.definitions;
+
+        // --- Render Summary (B3:D4) ---
+        let summaryHtml = '';
+        if (summary && summary.length >= 2) {
+            const headers = summary[0]; // Row 3
+            const values = summary[1];  // Row 4
+            for(let i = 0; i < headers.length; i++) {
+                if(headers[i].trim() !== "") {
+                    summaryHtml += `
+                    <div class="kpi-card" style="flex: 1; min-width: 150px;">
+                        <h3>${headers[i]}</h3>
+                        <div class="value-container">
+                            <span class="result" style="color: var(--primary-bg);">${values[i] || '0'}</span>
+                        </div>
+                    </div>`;
+                }
+            }
+        }
+        summaryContainer.innerHTML = summaryHtml || '<p style="color:#888;">No summary data found.</p>';
+
+        // --- Render Definitions (Row 6+) ---
+        if (!defs || defs.length === 0) {
+            defsContainer.innerHTML = '<p style="color:#888;">No definitions found starting from row 6.</p>';
+            return;
+        }
+
+        const groupedDefs = {};
+        defs.forEach(d => {
+            if (!groupedDefs[d.strategy]) groupedDefs[d.strategy] = [];
+            groupedDefs[d.strategy].push(d);
+        });
+
+        let defsHtml = '';
+        for (const [strategy, items] of Object.entries(groupedDefs)) {
+            defsHtml += `
+            <div class="chart-card def-card" style="padding: 0; overflow: hidden; height: auto; min-height: 0;">
+                <h3 style="margin: 0; background-color: var(--primary-bg); color: white; padding: 15px 24px; font-size: 1.1em;">
+                    ${strategy}
+                </h3>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%; position: static;">Issue</th>
+                                <th style="width: 55%; position: static;">Solution</th>
+                                <th style="width: 20%; position: static;">Issue Owner</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            
+            items.forEach(item => {
+                const solutions = item.solution.split('\n').map(s => s.trim()).filter(s => s).map(s => `<li style="margin-bottom: 4px;">${s}</li>`).join('');
+                const solutionOutput = solutions ? `<ul style="margin: 0; padding-left: 18px;">${solutions}</ul>` : '-';
+                const ownerOutput = item.owner ? `<span class="filter-badge" style="display:inline-block; background-color: #f0f0f0; border: none;">${item.owner}</span>` : '-';
+
+                defsHtml += `
+                            <tr>
+                                <td style="font-weight: 500;">${item.issue || '-'}</td>
+                                <td>${solutionOutput}</td>
+                                <td>${ownerOutput}</td>
+                            </tr>`;
+            });
+
+            defsHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+        }
+        defsContainer.innerHTML = defsHtml;
+    }
 
     function showError(error) {
         document.getElementById('loader-wrapper').style.display = 'none';
-        document.body.innerHTML = `<h3 style="color:red; text-align:center; margin-top:50px;">Error: ${error.message}</h3>`;
+        alert(`Error: ${error.message}`);
     }
 
     function renderDashboard(data) {
         if (data.error) { showError({message: data.error}); return; }
         
         document.getElementById('loader-wrapper').style.display = 'none';
-        document.getElementById('dashboard-content').style.visibility = 'visible';
+        document.getElementById('main-content').style.visibility = 'visible';
+
+        // Populate Years Dropdown (Run once so we don't clear user selection)
+        if (!isYearDropdownPopulated && data.availableYears) {
+            const yearSelect = document.getElementById('global-year');
+            data.availableYears.forEach(year => {
+                const opt = document.createElement('option');
+                opt.value = year; opt.text = year;
+                yearSelect.appendChild(opt);
+            });
+            isYearDropdownPopulated = true;
+        }
+
+        // Clean-up previous chart instances to update smoothly
+        if (chartMarket) { chartMarket.destroy(); chartStatus.destroy(); chartCategory.destroy(); chartSource.destroy(); chartRepeated.destroy(); }
         
         dashboardStats = data.cards; 
         renderKpiCards(data.cards);
@@ -254,6 +404,10 @@
         chartSource = renderSourceChart(data.charts.casesBySource);
         chartRepeated = renderRepeatedPropsChart(data.charts.repeatedProperties);
 
+        // Clear local filters on global fetch
+        currentFilter = null;
+        selectedRowId = null;
+        updateFilterBadge();
         renderTable(fullTableData);
     }
 
@@ -261,96 +415,55 @@
         selectedRowId = null;
         document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
 
-        let filterValue = null;
-        let filterType = type;
+        let filterValue = null; let filterType = type;
 
-        if (type === 'total') {
-            currentFilter = null; 
-        } else if (type === 'ongoing') {
-            filterValue = 'Ongoing';
-        } else if (type === 'month') {
-            filterValue = 'Current Month';
-        } else if (type === 'removed') {
-            filterValue = 'Yes';
-        } else if (type === 'top-category') {
-            filterType = 'category';
-            filterValue = dashboardStats.topCategory;
-            if (filterValue === 'N/A') return;
-        } else if (type === 'top-market') {
-            filterType = 'market';
-            filterValue = dashboardStats.topMarket;
-            if (filterValue === 'N/A') return;
-        }
+        if (type === 'total') { currentFilter = null; } 
+        else if (type === 'ongoing') { filterValue = 'Ongoing'; } 
+        else if (type === 'month') { filterValue = 'Current Month'; } 
+        else if (type === 'removed') { filterValue = 'Yes'; } 
+        else if (type === 'top-category') { filterType = 'category'; filterValue = dashboardStats.topCategory; if (filterValue === 'N/A') return; } 
+        else if (type === 'top-market') { filterType = 'market'; filterValue = dashboardStats.topMarket; if (filterValue === 'N/A') return; }
 
-        if (type === 'total') {
-            resetDashboard();
-        } else {
+        if (type === 'total') { resetDashboard(); } else {
             currentFilter = { type: filterType, value: filterValue };
-            const filteredData = filterData(fullTableData, currentFilter);
-            renderTable(filteredData);
+            renderTable(filterData(fullTableData, currentFilter));
             updateFilterBadge();
-            
             const drawer = document.getElementById('case-drawer');
             if (!drawer.classList.contains('open')) toggleDrawer();
         }
     }
 
     function handleChartClick(chartType, selectedValue) {
-      if (selectedRowId) {
-          selectedRowId = null;
-          document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
-      }
+      if (selectedRowId) { selectedRowId = null; document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row')); }
+      if (selectedValue == null || (currentFilter && currentFilter.type === chartType && currentFilter.value === selectedValue)) { currentFilter = null; } 
+      else { currentFilter = { type: chartType, value: selectedValue }; }
 
-      if (selectedValue === null || selectedValue === undefined) {
-          currentFilter = null;
-      } 
-      else if (currentFilter && currentFilter.type === chartType && currentFilter.value === selectedValue) {
-          currentFilter = null;
-      } else {
-          currentFilter = { type: chartType, value: selectedValue };
-      }
-
-      const filteredData = filterData(fullTableData, currentFilter);
-      renderTable(filteredData);
+      renderTable(filterData(fullTableData, currentFilter));
       updateFilterBadge();
 
       const drawer = document.getElementById('case-drawer');
-      if (!drawer.classList.contains('open') && currentFilter) {
-          toggleDrawer();
-      }
+      if (!drawer.classList.contains('open') && currentFilter) toggleDrawer();
     }
 
     function filterData(data, filter) {
         if (!filter) return data; 
-
         return data.filter(row => {
             if (filter.type === 'category') return row.category === filter.value;
             if (filter.type === 'status') return row.status === filter.value;
             if (filter.type === 'market') return row.market === filter.value;
             if (filter.type === 'source') return row.source.includes(filter.value);
-            
-            if (filter.type === 'ongoing') {
-                const s = row.status.toLowerCase();
-                return s === 'ongoing' || s === 'open';
-            }
+            if (filter.type === 'ongoing') { const s = row.status.toLowerCase(); return s === 'ongoing' || s === 'open'; }
             if (filter.type === 'month') return row.isThisMonth;
             if (filter.type === 'removed') return row.isRemoved;
             if (filter.type === 'property') return String(row.propertyId) === String(filter.value);
-            
             return true;
         });
     }
 
     function updateFilterBadge() {
         const badge = document.getElementById('filter-badge');
-        const text = document.getElementById('filter-text');
-        
-        if (currentFilter) {
-            badge.style.display = 'flex';
-            text.innerText = `${currentFilter.type}: ${currentFilter.value}`;
-        } else {
-            badge.style.display = 'none';
-        }
+        if (currentFilter) { badge.style.display = 'flex'; document.getElementById('filter-text').innerText = `${currentFilter.type}: ${currentFilter.value}`; } 
+        else { badge.style.display = 'none'; }
     }
 
     function highlightAllCharts(row) {
@@ -369,49 +482,40 @@
     }
 
     function resetDashboard() {
-        currentFilter = null;
-        selectedRowId = null;
-        updateFilterBadge();
-        renderTable(fullTableData);
-        
-        chartCategory.updateOptions({ colors: [COLORS.SINGLE_BAR] });
-        chartStatus.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
-        chartSource.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
-        chartMarket.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
+        const y = document.getElementById('global-year');
+        const m = document.getElementById('global-month');
+
+        if(y.value !== "All" || m.value !== "All") {
+            y.value = "All"; m.value = "All";
+            applyGlobalFilter(); 
+        } else {
+            currentFilter = null; selectedRowId = null; updateFilterBadge(); renderTable(fullTableData);
+            chartCategory.updateOptions({ colors: [COLORS.SINGLE_BAR] });
+            chartStatus.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
+            chartSource.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
+            chartMarket.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
+        }
     }
 
     function renderTable(rows) {
         const tbody = document.getElementById('table-body');
-        const countLabel = document.getElementById('list-count');
+        document.getElementById('list-count').innerText = `(${rows.length} cases)`;
         tbody.innerHTML = ''; 
-        
-        countLabel.innerText = `(${rows.length} cases)`;
 
-        if (rows.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#888;">No cases match this filter.</td></tr>';
-            return;
-        }
+        if (rows.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#888;">No cases match this filter.</td></tr>'; return; }
 
-        const displayRows = rows.slice(0, 100); 
-
-        displayRows.forEach(row => {
+        rows.slice(0, 100).forEach(row => {
             const tr = document.createElement('tr');
             tr.dataset.id = row.id;
             
-            const linkHtml = row.url 
-                ? `<a href="${row.url}" target="_blank" class="case-link" onclick="event.stopPropagation();">${row.id} <i class="fa-solid fa-external-link-alt" style="font-size:0.7em"></i></a>`
-                : `<strong>${row.id}</strong>`;
-
-            tr.innerHTML = `<td>${linkHtml}</td><td>${row.market}</td><td>${truncateText(row.summary, 120)}</td>`;
+            const linkHtml = row.url ? `<a href="${row.url}" target="_blank" class="case-link" onclick="event.stopPropagation();">${row.id} <i class="fa-solid fa-external-link-alt" style="font-size:0.7em"></i></a>` : `<strong>${row.id}</strong>`;
+            tr.innerHTML = `<td>${linkHtml}</td><td>${row.market}</td><td>${row.summary && row.summary.length > 120 ? row.summary.substr(0, 119) + '...' : (row.summary || '-')}</td>`;
             
             tr.addEventListener('click', () => {
-                if (selectedRowId === row.id) {
-                    resetDashboard(); 
-                } else {
-                    selectedRowId = row.id;
-                    document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
-                    tr.classList.add('active-row');
-                    highlightAllCharts(row);
+                if (selectedRowId === row.id) { resetDashboard(); } 
+                else {
+                    selectedRowId = row.id; document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
+                    tr.classList.add('active-row'); highlightAllCharts(row);
                 }
             });
             tbody.appendChild(tr);
@@ -426,182 +530,41 @@
     }
 
     function renderCategoryChart(data) {
-        const options = {
-            series: data.series,
-            chart: { 
-                type: 'bar', height: 320, 
-                events: {
-                    dataPointSelection: (e, chart, config) => {
-                        const idx = config.selectedDataPoints[0][0];
-                        if (idx !== undefined && idx !== -1) {
-                             handleChartClick('category', config.w.config.xaxis.categories[idx]);
-                        } else {
-                             handleChartClick('category', null);
-                        }
-                    }
-                },
-                toolbar: { show: false }, fontFamily: FONT_FAMILY
-            },
-            colors: [COLORS.SINGLE_BAR],
-            plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '70%', distributed: true } },
-            xaxis: { categories: data.categories },
-            title: { text: 'Cases by Category', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
-            legend: { show: false }
-        };
-        const chart = new ApexCharts(document.querySelector("#chartCategory"), options);
-        chart.render();
-        return chart;
+        const options = { series: data.series, chart: { type: 'bar', height: 320, events: { dataPointSelection: (e, chart, config) => { const idx = config.selectedDataPoints[0][0]; handleChartClick('category', idx !== undefined && idx !== -1 ? config.w.config.xaxis.categories[idx] : null); } }, toolbar: { show: false }, fontFamily: FONT_FAMILY }, colors: [COLORS.SINGLE_BAR], plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '70%', distributed: true } }, xaxis: { categories: data.categories }, title: { text: 'Cases by Category', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } }, legend: { show: false } };
+        const chart = new ApexCharts(document.querySelector("#chartCategory"), options); chart.render(); return chart;
     }
 
     function renderStatusChart(data) {
-        const options = {
-            series: data.series, labels: data.labels,
-            chart: { 
-                type: 'donut', height: 320, fontFamily: FONT_FAMILY,
-                events: {
-                    dataPointSelection: (e, chart, config) => {
-                        const idx = config.selectedDataPoints[0][0];
-                        if (idx !== undefined && idx !== -1) {
-                             handleChartClick('status', config.w.config.labels[idx]);
-                        } else {
-                             handleChartClick('status', null);
-                        }
-                    }
-                }
-            },
-            colors: COLORS.DEFAULT_PALETTE,
-            title: { text: 'Case Status', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
-            plotOptions: { pie: { donut: { size: '65%' } } }, legend: { position: 'bottom' }
-        };
-        const chart = new ApexCharts(document.querySelector("#chartStatus"), options);
-        chart.render();
-        return chart;
+        const options = { series: data.series, labels: data.labels, chart: { type: 'donut', height: 320, fontFamily: FONT_FAMILY, events: { dataPointSelection: (e, chart, config) => { const idx = config.selectedDataPoints[0][0]; handleChartClick('status', idx !== undefined && idx !== -1 ? config.w.config.labels[idx] : null); } } }, colors: COLORS.DEFAULT_PALETTE, title: { text: 'Case Status', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } }, plotOptions: { pie: { donut: { size: '65%' } } }, legend: { position: 'bottom' } };
+        const chart = new ApexCharts(document.querySelector("#chartStatus"), options); chart.render(); return chart;
     }
 
     function renderSourceChart(data) {
-        const options = {
-            series: data.series, labels: data.labels,
-            chart: { 
-                type: 'pie', height: 320, fontFamily: FONT_FAMILY,
-                events: {
-                    dataPointSelection: (e, chart, config) => {
-                        const idx = config.selectedDataPoints[0][0];
-                        if (idx !== undefined && idx !== -1) {
-                             handleChartClick('source', config.w.config.labels[idx]);
-                        } else {
-                             handleChartClick('source', null);
-                        }
-                    }
-                }
-            },
-            colors: COLORS.DEFAULT_PALETTE,
-            title: { text: 'Incoming Sources', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
-            legend: { position: 'bottom' }
-        };
-        const chart = new ApexCharts(document.querySelector("#chartSource"), options);
-        chart.render();
-        return chart;
+        const options = { series: data.series, labels: data.labels, chart: { type: 'pie', height: 320, fontFamily: FONT_FAMILY, events: { dataPointSelection: (e, chart, config) => { const idx = config.selectedDataPoints[0][0]; handleChartClick('source', idx !== undefined && idx !== -1 ? config.w.config.labels[idx] : null); } } }, colors: COLORS.DEFAULT_PALETTE, title: { text: 'Incoming Sources', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } }, legend: { position: 'bottom' } };
+        const chart = new ApexCharts(document.querySelector("#chartSource"), options); chart.render(); return chart;
     }
 
-    // --- UPDATED CHART FUNCTION ---
     function renderMarketChart(data) {
         const options = {
-            series: data.series,
-            chart: { 
-                type: 'bar',      // Changed to Bar
-                stacked: true,    // Enabled Stacking
-                height: 320, 
-                toolbar: { show: false }, 
-                fontFamily: FONT_FAMILY,
-                events: {
-                    dataPointSelection: (e, chart, config) => {
-                         const seriesIndex = config.seriesIndex;
-                         // In stacked bar, the seriesIndex correctly identifies the clicked segment
-                         if (seriesIndex !== undefined && seriesIndex !== -1) {
-                             const marketName = config.w.config.series[seriesIndex].name;
-                             handleChartClick('market', marketName);
-                         }
-                    }
-                }
-            },
-            colors: COLORS.DEFAULT_PALETTE,
-            title: { text: 'Cases by Market (Trend)', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
-            // Removed stroke/fill settings that were specific to Area charts
-            dataLabels: { enabled: false }, // Keep cleaner look
-            xaxis: { categories: data.categories },
-            legend: { position: 'top', horizontalAlign: 'right' },
-            tooltip: {
-                shared: true,
-                intersect: false,
-                custom: function({series, seriesIndex, dataPointIndex, w}) {
-                    let total = 0;
-                    w.config.series.forEach(s => {
-                        total += (s.data[dataPointIndex] || 0);
-                    });
-
-                    let html = '<div style="background:white; padding:8px 10px; border:1px solid #ccc; font-size:12px; font-family:' + FONT_FAMILY + ';">';
-                    html += `<div style="font-weight:700; border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:6px; color:#333;">${w.globals.labels[dataPointIndex]}: ${total} Cases</div>`;
-
-                    w.config.series.forEach((s, i) => {
-                        const val = s.data[dataPointIndex] || 0;
-                        if (val > 0) {
-                            const color = w.config.colors[i];
-                            html += `<div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">`;
-                            html += `<span style="width:8px; height:8px; border-radius:50%; background-color:${color}"></span>`;
-                            html += `<span>${s.name}: <strong>${val}</strong></span></div>`;
-                        }
-                    });
-
-                    html += `</div>`;
-                    return html;
-                }
-            }
+            series: data.series, chart: { type: 'bar', stacked: true, height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY, events: { dataPointSelection: (e, chart, config) => { const sIdx = config.seriesIndex; if (sIdx !== undefined && sIdx !== -1) handleChartClick('market', config.w.config.series[sIdx].name); } } }, colors: COLORS.DEFAULT_PALETTE, title: { text: 'Cases by Market (Trend)', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } }, dataLabels: { enabled: false }, xaxis: { categories: data.categories }, legend: { position: 'top', horizontalAlign: 'right' },
+            tooltip: { shared: true, intersect: false, custom: function({series, dataPointIndex, w}) { let t=0; w.config.series.forEach(s=>t+=(s.data[dataPointIndex]||0)); let html = `<div style="background:white; padding:8px; border:1px solid #ccc; font-size:12px; font-family:${FONT_FAMILY};"><div style="font-weight:700; border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:6px;">${w.globals.labels[dataPointIndex]}: ${t} Cases</div>`; w.config.series.forEach((s,i)=>{const v=s.data[dataPointIndex]||0; if(v>0) html+=`<div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;"><span style="width:8px; height:8px; border-radius:50%; background-color:${w.config.colors[i]}"></span><span>${s.name}: <strong>${v}</strong></span></div>`;}); return html+='</div>'; } }
         };
-        const chart = new ApexCharts(document.querySelector("#chart1"), options);
-        chart.render();
-        return chart;
+        const chart = new ApexCharts(document.querySelector("#chart1"), options); chart.render(); return chart;
     }
 
     function renderRepeatedPropsChart(data) {
-        const options = {
-            series: data.series,
-            chart: { 
-                type: 'bar', height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY,
-                events: {
-                    dataPointSelection: (e, chart, config) => {
-                        const idx = config.selectedDataPoints[0][0];
-                        if (idx !== undefined && idx !== -1) {
-                             handleChartClick('property', config.w.config.xaxis.categories[idx]);
-                        } else {
-                             handleChartClick('property', null);
-                        }
-                    }
-                }
-            },
-            colors: [COLORS.SINGLE_BAR],
-            plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '50%' } },
-            xaxis: { 
-                type: 'category',
-                categories: data.categories 
-            },
-            title: { text: 'Top Repeated Property IDs', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } },
-        };
-        const chart = new ApexCharts(document.querySelector("#chartRepeatedProps"), options);
-        chart.render();
-        return chart;
+        const options = { series: data.series, chart: { type: 'bar', height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY, events: { dataPointSelection: (e, chart, config) => { const idx = config.selectedDataPoints[0][0]; handleChartClick('property', idx !== undefined && idx !== -1 ? config.w.config.xaxis.categories[idx] : null); } } }, colors: [COLORS.SINGLE_BAR], plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '50%' } }, xaxis: { type: 'category', categories: data.categories }, title: { text: 'Top Repeated Property IDs', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } } };
+        const chart = new ApexCharts(document.querySelector("#chartRepeatedProps"), options); chart.render(); return chart;
     }
 
     function renderKpiCards(cards) {
         document.getElementById('total-cases').innerText = cards.totalCases;
         document.getElementById('ongoing-cases').innerText = cards.ongoingCases;
         document.getElementById('cases-this-month').innerText = cards.casesThisMonth;
-        document.getElementById('top-category').innerText = truncateText(cards.topCategory, 12);
-        document.getElementById('top-market').innerText = truncateText(cards.topMarket, 12);
+        document.getElementById('top-category').innerText = cards.topCategory && cards.topCategory.length > 12 ? cards.topCategory.substr(0,11) + '...' : cards.topCategory;
+        document.getElementById('top-market').innerText = cards.topMarket && cards.topMarket.length > 12 ? cards.topMarket.substr(0,11) + '...' : cards.topMarket;
         document.getElementById('review-removed').innerText = cards.reviewRemoved;
     }
-
-    function truncateText(str, n) { return (str && str.length > n) ? str.substr(0, n-1) + '...' : str; }
-
 </script>
 </body>
 </html>
