@@ -95,7 +95,6 @@ function getDashboardData(filterMonth, filterYear) {
 
     let totalCases = 0;
     let ongoingCases = 0;
-    let casesThisMonth = 0;
     let reviewRemoved = 0;
     const categoryCounts = {};
     const marketCounts = {};
@@ -110,14 +109,12 @@ function getDashboardData(filterMonth, filterYear) {
 
     const rawTableData = [];
     const availableYears = new Set();
-    
     data.forEach(row => {
       const reviewDateStr = row[6];
       if (reviewDateStr && reviewDateStr instanceof Date) {
         availableYears.add(reviewDateStr.getFullYear());
       }
     });
-    
     data.forEach((row, i) => {
       const reviewDateStr = row[6]; // Column G (Review Date)
       let rowMonth = null;
@@ -165,13 +162,8 @@ function getDashboardData(filterMonth, filterYear) {
         displayReservationId = "Host";
       }
 
-      let isThisMonth = false;
       let monthYearLabel = "Unknown Date";
       if (reviewDateStr && reviewDateStr instanceof Date) {
-        if (reviewDateStr.getMonth() === currentMonth && reviewDateStr.getFullYear() === currentYear) {
-          isThisMonth = true;
-          casesThisMonth++;
-        }
         monthYearLabel = `${reviewDateStr.toLocaleString('default', { month: 'long' })} ${reviewDateStr.getFullYear()}`;
       }
 
@@ -185,13 +177,11 @@ function getDashboardData(filterMonth, filterYear) {
         status: statusRaw,
         propertyId: propertyId,
         isRemoved: isRemoved,
-        isThisMonth: isThisMonth,
         displayReservationId: displayReservationId,
         monthYear: monthYearLabel,
         reservationId: reservationId, 
         duplicateReviews: duplicateReviews 
       });
-
       if (propertyId !== "Unknown") {
         propertyRawCounts[propertyId] = (propertyRawCounts[propertyId] || 0) + 1;
         if (duplicateReviews !== "yes") {
@@ -212,7 +202,6 @@ function getDashboardData(filterMonth, filterYear) {
       statusCounts[statusRaw] = (statusCounts[statusRaw] || 0) + 1;
 
       if (isRemoved) reviewRemoved++;
-      
       if (reviewDateStr && reviewDateStr instanceof Date) {
         const monthYear = `${reviewDateStr.toLocaleString('default', { month: 'short' })} ${reviewDateStr.getFullYear()}`;
         // Existing Market Logic
@@ -232,7 +221,6 @@ function getDashboardData(filterMonth, filterYear) {
       .filter(([pid, cleanCount]) => pid !== 'Unknown' && (propertyRawCounts[pid] || 0) >= 2 && cleanCount > 0)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
-
     const repeatedPropertyData = {
       categories: repeatedProperties.map(item => item[0]),
       series: [{
@@ -240,22 +228,17 @@ function getDashboardData(filterMonth, filterYear) {
         data: repeatedProperties.map(item => item[1])
       }]
     };
-
     const findTopItem = (counts) => Object.keys(counts).length ? Object.entries(counts).reduce((a, b) => a[1] > b[1] ? a : b)[0] : 'N/A';
-    
     // Sort all months chronologically (For filtered charts like Market Trend)
     const allMonths = [...new Set(Object.values(marketCasesByMonth).flatMap(Object.keys))].sort((a, b) => new Date(a) - new Date(b));
-    
     // <--- NEW: Dedicated month array for Heatmap to show unfiltered range --->
     const allHeatmapMonths = [...new Set(Object.values(categoryCasesByMonth).flatMap(Object.keys))].sort((a, b) => new Date(a) - new Date(b));
-
     const marketSeries = Object.keys(marketCasesByMonth).map(mkt => {
       return {
         name: mkt,
         data: allMonths.map(month => marketCasesByMonth[mkt][month] || 0)
       };
     });
-
     // <--- NEW: Prepare Heatmap Series using unfiltered months array --->
     const heatmapSeries = Object.keys(categoryCasesByMonth).map(cat => {
       return {
@@ -263,14 +246,12 @@ function getDashboardData(filterMonth, filterYear) {
         data: allHeatmapMonths.map(month => categoryCasesByMonth[cat][month] || 0)
       };
     });
-
     const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
 
     return {
       cards: {
         totalCases: totalCases,
         ongoingCases: ongoingCases,
-        casesThisMonth: casesThisMonth,
         topCategory: findTopItem(categoryCounts),
         topMarket: findTopItem(marketCounts),
         reviewRemoved: reviewRemoved
@@ -299,7 +280,6 @@ function getResolutionInsightsData() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAME);
     if (!sheet) throw new Error(`Sheet "${SHEET_NAME}" not found. Please ensure it exists.`);
-
     // 1. Fetch Summary Data (B3:D4) - To capture the Grand Total as well
     const summaryRange = sheet.getRange("B3:D4");
     const summaryData = summaryRange.getDisplayValues();
@@ -314,16 +294,12 @@ function getResolutionInsightsData() {
 
     const processedDefs = [];
     let currentStrategy = "Uncategorized";
-
     for (let i = 0; i < defData.length; i++) {
       const row = defData[i];
-
       // Skip completely empty rows
       if (!row.join('').trim()) continue;
-
       // Skip the table header if it's there
       if (row[0].trim() === "Strategic Resolution" && row[1].trim() === "Issue") continue;
-
       // If Column A has text, update the current strategy (handles vertically merged cells)
       if (row[0].trim() !== "") {
         currentStrategy = row[0].trim();

@@ -139,7 +139,6 @@
             <div class="kpi-container">
                 <div class="kpi-card" onclick="handleCardClick('total')"><h3>Total Cases</h3><div class="value-container"><span id="total-cases" class="result">...</span><i class="fa-solid fa-briefcase icon"></i></div></div>
                 <div class="kpi-card" onclick="handleCardClick('ongoing')"><h3>Ongoing</h3><div class="value-container"><span id="ongoing-cases" class="result">...</span><i class="fa-solid fa-spinner icon"></i></div></div>
-                <div class="kpi-card" onclick="handleCardClick('month')"><h3>This Month</h3><div class="value-container"><span id="cases-this-month" class="result">...</span><i class="fa-solid fa-calendar-day icon"></i></div></div>
                 <div class="kpi-card" onclick="handleCardClick('top-category')"><h3>Top Category</h3><div class="value-container"><span id="top-category" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-tags icon"></i></div></div>
                 <div class="kpi-card" onclick="handleCardClick('top-market')"><h3>Top Market</h3><div class="value-container"><span id="top-market" class="result" style="font-size: 1.2em;">...</span><i class="fa-solid fa-globe icon"></i></div></div>
                 <div class="kpi-card" onclick="handleCardClick('removed')"><h3>Review Removed</h3><div class="value-container"><span id="review-removed" class="result">...</span><i class="fa-solid fa-eraser icon"></i></div></div>
@@ -411,7 +410,7 @@
         chartSource = renderSourceChart(data.charts.casesBySource);
         chartRepeated = renderRepeatedPropsChart(data.charts.repeatedProperties);
 
-        // <--- NEW: Render the Heatmap
+        // Render the Heatmap
         if (data.charts.categoryHeatmap) {
             chartHeatmap = renderHeatmapChart(data.charts.categoryHeatmap);
         }
@@ -431,7 +430,6 @@
 
         if (type === 'total') { currentFilter = null; } 
         else if (type === 'ongoing') { filterValue = 'Ongoing'; } 
-        else if (type === 'month') { filterValue = 'Current Month'; } 
         else if (type === 'removed') { filterValue = 'Yes'; } 
         else if (type === 'top-category') { filterType = 'category'; filterValue = dashboardStats.topCategory; if (filterValue === 'N/A') return; } 
         else if (type === 'top-market') { filterType = 'market'; filterValue = dashboardStats.topMarket; if (filterValue === 'N/A') return; }
@@ -465,7 +463,6 @@
             if (filter.type === 'market') return row.market === filter.value;
             if (filter.type === 'source') return row.source.includes(filter.value);
             if (filter.type === 'ongoing') { const s = row.status.toLowerCase(); return s === 'ongoing' || s === 'open'; }
-            if (filter.type === 'month') return row.isThisMonth;
             if (filter.type === 'removed') return row.isRemoved;
             if (filter.type === 'property') return String(row.propertyId) === String(filter.value);
             return true;
@@ -655,7 +652,6 @@
     function renderKpiCards(cards) {
         document.getElementById('total-cases').innerText = cards.totalCases;
         document.getElementById('ongoing-cases').innerText = cards.ongoingCases;
-        document.getElementById('cases-this-month').innerText = cards.casesThisMonth;
         document.getElementById('top-category').innerText = cards.topCategory && cards.topCategory.length > 12 ? cards.topCategory.substr(0,11) + '...' : cards.topCategory;
         document.getElementById('top-market').innerText = cards.topMarket && cards.topMarket.length > 12 ? cards.topMarket.substr(0,11) + '...' : cards.topMarket;
         document.getElementById('review-removed').innerText = cards.reviewRemoved;
