@@ -202,7 +202,13 @@
         <div class="drawer-content">
             <table id="data-table">
                 <thead>
-                    <tr><th style="width:130px;">ID</th><th style="width:120px;">Market</th><th>Summary</th></tr>
+                    <tr>
+                        <th style="width:130px;">ID</th>
+                        <th style="width:100px;">Market</th>
+                        <th style="width:130px;">Reservation ID</th>
+                        <th>Summary</th>
+                        <th style="width:150px;">Category</th>
+                    </tr>
                 </thead>
                 <tbody id="table-body"></tbody>
             </table>
@@ -508,14 +514,21 @@
         document.getElementById('list-count').innerText = `(${rows.length} cases)`;
         tbody.innerHTML = ''; 
 
-        if (rows.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#888;">No cases match this filter.</td></tr>'; return; }
+        if (rows.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#888;">No cases match this filter.</td></tr>'; return; }
 
         rows.slice(0, 100).forEach(row => {
             const tr = document.createElement('tr');
             tr.dataset.id = row.id;
             
             const linkHtml = row.url ? `<a href="${row.url}" target="_blank" class="case-link" onclick="event.stopPropagation();">${row.id} <i class="fa-solid fa-external-link-alt" style="font-size:0.7em"></i></a>` : `<strong>${row.id}</strong>`;
-            tr.innerHTML = `<td>${linkHtml}</td><td>${row.market}</td><td>${row.summary && row.summary.length > 120 ? row.summary.substr(0, 119) + '...' : (row.summary || '-')}</td>`;
+            
+            tr.innerHTML = `
+                <td>${linkHtml}</td>
+                <td>${row.market}</td>
+                <td>${row.reservationId || '-'}</td>
+                <td style="white-space: pre-wrap;">${row.summary || '-'}</td>
+                <td>${row.category || '-'}</td>
+            `;
             
             tr.addEventListener('click', () => {
                 if (selectedRowId === row.id) { resetDashboard(); } 
