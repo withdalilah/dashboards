@@ -158,7 +158,7 @@
             <div class="main-header">
                 <div>
                     <h1><i class="fa-solid fa-lightbulb"></i> Resolution Insights</h1>
-                    <p>In-depth look into handled resolutions and strategic definitions</p>
+                    <p>Status of Initiatives Addressing Recurrent Issues</p>
                 </div>
             </div>
             
@@ -167,12 +167,8 @@
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h2 style="color: var(--primary-font); font-size: 1.3em; margin: 0; padding-left: 5px;">
-                    <i class="fa-solid fa-book-open" style="margin-right: 8px;"></i> Strategy Definitions
+                    <i class="fa-solid fa-book-open" style="margin-right: 8px;"></i> Issues Requiring Strategic Resolution
                 </h2>
-                <div style="position: relative;">
-                    <i class="fa-solid fa-search" style="position: absolute; left: 12px; top: 12px; color: #aaa;"></i>
-                    <input type="text" id="def-search" placeholder="Search issues or solutions..." style="padding: 10px 12px 10px 35px; border-radius: 8px; border: 1px solid var(--border-color); width: 250px; outline: none; font-family: inherit; font-size: 0.9em;" onkeyup="filterDefinitions()">
-                </div>
             </div>
 
             <div id="resolution-definitions-container" style="display: flex; flex-direction: column; gap: 20px;">
@@ -263,16 +259,6 @@
             document.getElementById('loader-wrapper').style.display = 'flex';
             google.script.run.withSuccessHandler(renderResolution).withFailureHandler(showError).getResolutionInsightsData();
         }
-    }
-
-    function filterDefinitions() {
-        const query = document.getElementById('def-search').value.toLowerCase();
-        const cards = document.querySelectorAll('.def-card');
-        
-        cards.forEach(card => {
-            const text = card.innerText.toLowerCase();
-            card.style.display = text.includes(query) ? 'block' : 'none';
-        });
     }
 
     function applyGlobalFilter() {
