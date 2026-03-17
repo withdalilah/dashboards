@@ -336,6 +336,22 @@
 
         let defsHtml = '';
         for (const [strategy, items] of Object.entries(groupedDefs)) {
+            
+            // --- NEW: Grab the status from the very first item in the group to use for the merged cell ---
+            const firstItemStatus = items[0].status;
+            let statusColor = '#666';
+            let statusBg = '#eee';
+            
+            if (firstItemStatus && firstItemStatus.toLowerCase() === 'ongoing') {
+                statusColor = '#d97706';
+                statusBg = '#fef3c7';
+            } else if (firstItemStatus && (firstItemStatus.toLowerCase() === 'closed' || firstItemStatus.toLowerCase() === 'resolved')) {
+                statusColor = '#16a34a';
+                statusBg = '#dcfce7';
+            }
+            
+            const statusBadgeHtml = firstItemStatus ? `<span style="display:inline-block; padding: 6px 14px; border-radius: 12px; font-size: 0.9em; font-weight: 600; color: ${statusColor}; background-color: ${statusBg};">${firstItemStatus}</span>` : '-';
+
             defsHtml += `
             <div class="chart-card def-card" style="padding: 0; overflow: hidden; height: auto; min-height: 0;">
                 <h3 style="margin: 0; background-color: var(--primary-bg); color: white; padding: 15px 24px; font-size: 1.1em;">
@@ -346,13 +362,14 @@
                         <thead>
                             <tr>
                                 <th style="width: 25%; position: static;">Issue</th>
-                                <th style="width: 55%; position: static;">Solution</th>
-                                <th style="width: 20%; position: static;">Issue Owner</th>
+                                <th style="width: 45%; position: static;">Solution</th>
+                                <th style="width: 15%; position: static;">Issue Owner</th>
+                                <th style="width: 15%; position: static; text-align: center;">Status</th>
                             </tr>
                         </thead>
                         <tbody>`;
             
-            items.forEach(item => {
+            items.forEach((item, index) => {
                 const solutions = item.solution.split('\n').map(s => s.trim()).filter(s => s).map(s => `<li style="margin-bottom: 4px;">${s}</li>`).join('');
                 const solutionOutput = solutions ? `<ul style="margin: 0; padding-left: 18px;">${solutions}</ul>` : '-';
                 const ownerOutput = item.owner ? `<span class="filter-badge" style="display:inline-block; background-color: #f0f0f0; border: none;">${item.owner}</span>` : '-';
@@ -361,8 +378,17 @@
                             <tr>
                                 <td style="font-weight: 500;">${item.issue || '-'}</td>
                                 <td>${solutionOutput}</td>
-                                <td>${ownerOutput}</td>
-                            </tr>`;
+                                <td>${ownerOutput}</td>`;
+
+                // --- NEW: Only print the Status column (with rowspan) on the VERY FIRST row (index === 0) ---
+                if (index === 0) {
+                    defsHtml += `
+                                <td rowspan="${items.length}" style="vertical-align: middle; text-align: center; border-left: 1px solid var(--border-color);">
+                                    ${statusBadgeHtml}
+                                </td>`;
+                }
+
+                defsHtml += `</tr>`;
             });
 
             defsHtml += `

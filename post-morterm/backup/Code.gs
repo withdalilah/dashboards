@@ -280,36 +280,46 @@ function getResolutionInsightsData() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAME);
     if (!sheet) throw new Error(`Sheet "${SHEET_NAME}" not found. Please ensure it exists.`);
+    
     // 1. Fetch Summary Data (B3:D4) - To capture the Grand Total as well
     const summaryRange = sheet.getRange("B3:D4");
     const summaryData = summaryRange.getDisplayValues();
 
-    // 2. Fetch Definition Data (Row 6 onwards, Columns A to D)
+    // 2. Fetch Definition Data (Row 6 onwards, Columns A to E now to include Status)
     const lastRow = sheet.getLastRow();
     let defData = [];
     if (lastRow >= 6) {
-      const defRange = sheet.getRange(`A6:D${lastRow}`);
+      const defRange = sheet.getRange(`A6:E${lastRow}`);
       defData = defRange.getDisplayValues();
     }
 
     const processedDefs = [];
     let currentStrategy = "Uncategorized";
+    let currentStatus = ""; // NEW: carry over variable for status
+
     for (let i = 0; i < defData.length; i++) {
       const row = defData[i];
       // Skip completely empty rows
       if (!row.join('').trim()) continue;
       // Skip the table header if it's there
       if (row[0].trim() === "Strategic Resolution" && row[1].trim() === "Issue") continue;
+      
       // If Column A has text, update the current strategy (handles vertically merged cells)
       if (row[0].trim() !== "") {
         currentStrategy = row[0].trim();
+      }
+      
+      // If Column E (index 4) has text, update current status (handles vertically merged cells)
+      if (row[4] && row[4].trim() !== "") {
+        currentStatus = row[4].trim();
       }
       
       processedDefs.push({
         strategy: currentStrategy,
         issue: row[1] ? row[1].trim() : "",
         solution: row[2] ? row[2].trim() : "",
-        owner: row[3] ? row[3].trim() : ""
+        owner: row[3] ? row[3].trim() : "",
+        status: currentStatus // Include the status field
       });
     }
 
