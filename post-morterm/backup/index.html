@@ -227,7 +227,6 @@
     let isYearDropdownPopulated = false;
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Load default dashboard
         google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData("All", "All");
     });
 
@@ -241,7 +240,6 @@
         texts.forEach(t => t.style.display = isCollapsed ? 'none' : 'inline');
         logo.style.display = isCollapsed ? 'none' : 'flex';
 
-        // Trigger resize event to make charts fit the new width dynamically
         setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 300);
     }
 
@@ -252,7 +250,6 @@
         document.getElementById('menu-dashboard').classList.toggle('active', page === 'dashboard');
         document.getElementById('menu-resolution').classList.toggle('active', page === 'resolution');
 
-        // Drawer behaviour 
         const drawerBtn = document.getElementById('drawer-btn');
         const caseDrawer = document.getElementById('case-drawer');
         if (page !== 'dashboard') {
@@ -262,14 +259,12 @@
             drawerBtn.style.display = 'flex';
         }
 
-        // Fetch Resolution Data if empty
         if (page === 'resolution' && !document.getElementById('resolution-definitions-container').innerHTML.trim()) {
             document.getElementById('loader-wrapper').style.display = 'flex';
             google.script.run.withSuccessHandler(renderResolution).withFailureHandler(showError).getResolutionInsightsData();
         }
     }
 
-    // --- Resolution Search Filter ---
     function filterDefinitions() {
         const query = document.getElementById('def-search').value.toLowerCase();
         const cards = document.querySelectorAll('.def-card');
@@ -280,7 +275,6 @@
         });
     }
 
-    // --- Global Filtering Functions ---
     function applyGlobalFilter() {
         const selectedYear = document.getElementById('global-year').value;
         const selectedMonth = document.getElementById('global-month').value;
@@ -289,129 +283,148 @@
         google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData(selectedMonth, selectedYear);
     }
 
+    // --- RENDERING RESOLUTION DATA ---
     function renderResolution(response) {
-        document.getElementById('loader-wrapper').style.display = 'none';
-        
-        const summaryContainer = document.getElementById('resolution-summary-container');
+        const loader = document.getElementById('loader-wrapper');
         const defsContainer = document.getElementById('resolution-definitions-container');
 
-        if (response.error) { 
-            defsContainer.innerHTML = `<div style="color:red; padding: 20px; background: white; border-radius: 12px;">Error: ${response.error}</div>`; 
-            return; 
-        }
-        
-        const summary = response.summary;
-        const defs = response.definitions;
-
-        // --- Render Summary (B3:D4) ---
-        let summaryHtml = '';
-        if (summary && summary.length >= 2) {
-            const headers = summary[0]; // Row 3
-            const values = summary[1];  // Row 4
-            for(let i = 0; i < headers.length; i++) {
-                if(headers[i].trim() !== "") {
-                    summaryHtml += `
-                    <div class="kpi-card" style="flex: 1; min-width: 150px;">
-                        <h3>${headers[i]}</h3>
-                        <div class="value-container">
-                            <span class="result" style="color: var(--primary-bg);">${values[i] || '0'}</span>
-                        </div>
-                    </div>`;
-                }
+        try {
+            loader.style.display = 'none'; 
+            
+            if (!response) {
+                throw new Error("No response received from the Google Apps Script server.");
             }
-        }
-        summaryContainer.innerHTML = summaryHtml || '<p style="color:#888;">No summary data found.</p>';
 
-        // --- Render Definitions (Row 6+) ---
-        if (!defs || defs.length === 0) {
-            defsContainer.innerHTML = '<p style="color:#888;">No definitions found starting from row 6.</p>';
-            return;
-        }
-
-        const groupedDefs = {};
-        defs.forEach(d => {
-            if (!groupedDefs[d.strategy]) groupedDefs[d.strategy] = [];
-            groupedDefs[d.strategy].push(d);
-        });
-
-        let defsHtml = '';
-        for (const [strategy, items] of Object.entries(groupedDefs)) {
-            
-            // --- NEW: Grab the status from the very first item in the group to use for the merged cell ---
-            const firstItemStatus = items[0].status;
-            let statusColor = '#666';
-            let statusBg = '#eee';
-            
-            if (firstItemStatus && firstItemStatus.toLowerCase() === 'ongoing') {
-                statusColor = '#d97706';
-                statusBg = '#fef3c7';
-            } else if (firstItemStatus && (firstItemStatus.toLowerCase() === 'closed' || firstItemStatus.toLowerCase() === 'resolved')) {
-                statusColor = '#16a34a';
-                statusBg = '#dcfce7';
+            if (response.error) { 
+                defsContainer.innerHTML = `<div style="color:red; padding: 20px; background: white; border-radius: 12px; font-weight:bold;">Backend Error: ${response.error}</div>`; 
+                return; 
             }
             
-            const statusBadgeHtml = firstItemStatus ? `<span style="display:inline-block; padding: 6px 14px; border-radius: 12px; font-size: 0.9em; font-weight: 600; color: ${statusColor}; background-color: ${statusBg};">${firstItemStatus}</span>` : '-';
+            const summaryContainer = document.getElementById('resolution-summary-container');
+            const summary = response.summary || [];
+            const defs = response.definitions || [];
 
-            defsHtml += `
-            <div class="chart-card def-card" style="padding: 0; overflow: hidden; height: auto; min-height: 0;">
-                <h3 style="margin: 0; background-color: var(--primary-bg); color: white; padding: 15px 24px; font-size: 1.1em;">
-                    ${strategy}
-                </h3>
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr>
-                                <th style="width: 25%; position: static;">Issue</th>
-                                <th style="width: 45%; position: static;">Solution</th>
-                                <th style="width: 15%; position: static;">Issue Owner</th>
-                                <th style="width: 15%; position: static; text-align: center;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-            
-            items.forEach((item, index) => {
-                const solutions = item.solution.split('\n').map(s => s.trim()).filter(s => s).map(s => `<li style="margin-bottom: 4px;">${s}</li>`).join('');
-                const solutionOutput = solutions ? `<ul style="margin: 0; padding-left: 18px;">${solutions}</ul>` : '-';
-                const ownerOutput = item.owner ? `<span class="filter-badge" style="display:inline-block; background-color: #f0f0f0; border: none;">${item.owner}</span>` : '-';
-
-                defsHtml += `
-                            <tr>
-                                <td style="font-weight: 500;">${item.issue || '-'}</td>
-                                <td>${solutionOutput}</td>
-                                <td>${ownerOutput}</td>`;
-
-                // --- NEW: Only print the Status column (with rowspan) on the VERY FIRST row (index === 0) ---
-                if (index === 0) {
-                    defsHtml += `
-                                <td rowspan="${items.length}" style="vertical-align: middle; text-align: center; border-left: 1px solid var(--border-color);">
-                                    ${statusBadgeHtml}
-                                </td>`;
+            let summaryHtml = '';
+            if (summary.length >= 2) {
+                const headers = summary[0];
+                const values = summary[1];
+                for(let i = 0; i < headers.length; i++) {
+                    if(headers[i].trim() !== "") {
+                        summaryHtml += `
+                        <div class="kpi-card" style="flex: 1; min-width: 150px;">
+                            <h3>${headers[i]}</h3>
+                            <div class="value-container">
+                                <span class="result" style="color: var(--primary-bg);">${values[i] || '0'}</span>
+                            </div>
+                        </div>`;
+                    }
                 }
+            }
+            summaryContainer.innerHTML = summaryHtml || '<p style="color:#888;">No summary data found.</p>';
 
-                defsHtml += `</tr>`;
+            if (defs.length === 0) {
+                defsContainer.innerHTML = '<p style="color:#888;">No definitions found starting from row 6.</p>';
+                return;
+            }
+
+            const groupedDefs = {};
+            defs.forEach(d => {
+                if (!groupedDefs[d.strategy]) groupedDefs[d.strategy] = [];
+                groupedDefs[d.strategy].push(d);
             });
 
-            defsHtml += `
-                        </tbody>
-                    </table>
-                </div>
+            let defsHtml = '';
+            for (const [strategy, items] of Object.entries(groupedDefs)) {
+                
+                // Get the owner & status from the first item to apply to the merged rowspan cells
+                const firstItemOwner = items[0].owner || "";
+                const ownerOutputHtml = firstItemOwner ? `<span class="filter-badge" style="display:inline-block; background-color: #f0f0f0; border: none; white-space: normal; text-align: center;">${firstItemOwner}</span>` : '-';
+                
+                const firstItemStatus = items[0].status || "";
+                let statusColor = '#666';
+                let statusBg = '#eee';
+                
+                if (firstItemStatus.toLowerCase() === 'ongoing') {
+                    statusColor = '#d97706';
+                    statusBg = '#fef3c7';
+                } else if (firstItemStatus.toLowerCase() === 'closed' || firstItemStatus.toLowerCase() === 'resolved') {
+                    statusColor = '#16a34a';
+                    statusBg = '#dcfce7';
+                }
+                
+                const statusBadgeHtml = firstItemStatus ? `<span style="display:inline-block; padding: 6px 14px; border-radius: 12px; font-size: 0.9em; font-weight: 600; color: ${statusColor}; background-color: ${statusBg};">${firstItemStatus}</span>` : '-';
+
+                defsHtml += `
+                <div class="chart-card def-card" style="padding: 0; overflow: hidden; height: auto; min-height: 0;">
+                    <h3 style="margin: 0; background-color: var(--primary-bg); color: white; padding: 15px 24px; font-size: 1.1em;">
+                        ${strategy}
+                    </h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%; position: static;">Issue</th>
+                                    <th style="width: 45%; position: static;">Solution</th>
+                                    <th style="width: 15%; position: static; text-align: center;">Issue Owner</th>
+                                    <th style="width: 15%; position: static; text-align: center;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                
+                items.forEach((item, index) => {
+                    const solutions = (item.solution || "").split('\n').map(s => s.trim()).filter(s => s).map(s => `<li style="margin-bottom: 4px;">${s}</li>`).join('');
+                    const solutionOutput = solutions ? `<ul style="margin: 0; padding-left: 18px;">${solutions}</ul>` : '-';
+
+                    defsHtml += `
+                                <tr>
+                                    <td style="font-weight: 500;">${item.issue || '-'}</td>
+                                    <td>${solutionOutput}</td>`;
+
+                    // Only render Issue Owner and Status on the first iteration, stretching it vertically
+                    if (index === 0) {
+                        defsHtml += `
+                                    <td rowspan="${items.length}" style="vertical-align: middle; text-align: center; border-left: 1px solid var(--border-color);">
+                                        ${ownerOutputHtml}
+                                    </td>
+                                    <td rowspan="${items.length}" style="vertical-align: middle; text-align: center; border-left: 1px solid var(--border-color);">
+                                        ${statusBadgeHtml}
+                                    </td>`;
+                    }
+
+                    defsHtml += `</tr>`;
+                });
+
+                defsHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+            }
+            defsContainer.innerHTML = defsHtml;
+
+        } catch (err) {
+            loader.style.display = 'none';
+            console.error("Rendering Error in Resolution Page:", err);
+            defsContainer.innerHTML = `<div style="color:red; padding: 20px; background: white; border-radius: 12px; font-weight:bold;">
+                <p>Oof, something broke while trying to render the table!</p>
+                <p style="font-family: monospace; color:#333; background:#fee; padding: 10px; border-radius: 4px;">${err.message}</p>
             </div>`;
         }
-        defsContainer.innerHTML = defsHtml;
     }
 
     function showError(error) {
         document.getElementById('loader-wrapper').style.display = 'none';
-        alert(`Error: ${error.message}`);
+        console.error("Server API Error:", error);
+        alert(`Dashboard Error: ${error.message || 'The script failed to connect. This is often caused by an adblocker or extension.'}`);
     }
 
+    // ... (rest of functions remain exactly the same) ...
     function renderDashboard(data) {
         if (data.error) { showError({message: data.error}); return; }
         
         document.getElementById('loader-wrapper').style.display = 'none';
         document.getElementById('main-content').style.visibility = 'visible';
 
-        // Populate Years Dropdown (Run once so we don't clear user selection)
         if (!isYearDropdownPopulated && data.availableYears) {
             const yearSelect = document.getElementById('global-year');
             data.availableYears.forEach(year => {
@@ -422,7 +435,6 @@
             isYearDropdownPopulated = true;
         }
 
-        // Clean-up previous chart instances to update smoothly
         if (chartMarket) { chartMarket.destroy(); chartStatus.destroy(); chartCategory.destroy(); chartSource.destroy(); chartRepeated.destroy(); }
         
         dashboardStats = data.cards; 
@@ -436,12 +448,8 @@
         chartSource = renderSourceChart(data.charts.casesBySource);
         chartRepeated = renderRepeatedPropsChart(data.charts.repeatedProperties);
 
-        // Render the Heatmap
-        if (data.charts.categoryHeatmap) {
-            chartHeatmap = renderHeatmapChart(data.charts.categoryHeatmap);
-        }
+        if (data.charts.categoryHeatmap) { chartHeatmap = renderHeatmapChart(data.charts.categoryHeatmap); }
 
-        // Clear local filters on global fetch
         currentFilter = null;
         selectedRowId = null;
         updateFilterBadge();
@@ -600,79 +608,10 @@
     }
 
     function renderHeatmapChart(data) {
-    const options = {
-        series: data.series,
-        chart: {
-            height: 500, // Increased height for better visibility
-            type: 'heatmap',
-            fontFamily: "Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-            toolbar: { show: false }
-        },
-        plotOptions: {
-            heatmap: {
-                shadeIntensity: 0.5,
-                radius: 2, // Slight rounded corners for a modern look
-                useFillColorAsStroke: false,
-                colorScale: {
-                    ranges: [
-                        {
-                            from: 0,
-                            to: 0,
-                            name: '0 (Safe)',
-                            color: '#DCEDC8' // Light Green
-                        },
-                        {
-                            from: 1,
-                            to: 2,
-                            name: '1-2 (Low)',
-                            color: '#4FC3F7' // Light Blue
-                        },
-                        {
-                            from: 3,
-                            to: 4,
-                            name: '3-4 (Warning)',
-                            color: '#FF9800' // Orange
-                        },
-                        {
-                            from: 5,
-                            to: 1000, // Covers everything more than 5
-                            name: '> 5 (Critical)',
-                            color: '#B71C1C' // Dark Red
-                        }
-                    ]
-                }
-            }
-        },
-        dataLabels: {
-            enabled: true, // Show the numbers inside the blocks
-            style: {
-                colors: ['#000'] // Black text for readability
-            }
-        },
-        stroke: {
-            width: 1,
-            colors: ['#fff'] // White borders between blocks
-        },
-        title: {
-            text: 'Category Frequency Heatmap (Month vs Category)',
-            style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 }
-        },
-        xaxis: {
-            type: 'category',
-            categories: data.categories
-        },
-        tooltip: {
-            y: {
-                formatter: function (val) {
-                    return val + " occurrences";
-                }
-            }
-        }
-    };
-
-      const chart = new ApexCharts(document.querySelector("#chartHeatmap"), options);
-      chart.render();
-      return chart;
+        const options = {
+            series: data.series, chart: { height: 500, type: 'heatmap', fontFamily: "Segoe UI, Roboto, Helvetica, Arial, sans-serif", toolbar: { show: false } }, plotOptions: { heatmap: { shadeIntensity: 0.5, radius: 2, useFillColorAsStroke: false, colorScale: { ranges: [ { from: 0, to: 0, name: '0 (Safe)', color: '#DCEDC8' }, { from: 1, to: 2, name: '1-2 (Low)', color: '#4FC3F7' }, { from: 3, to: 4, name: '3-4 (Warning)', color: '#FF9800' }, { from: 5, to: 1000, name: '> 5 (Critical)', color: '#B71C1C' } ] } } }, dataLabels: { enabled: true, style: { colors: ['#000'] } }, stroke: { width: 1, colors: ['#fff'] }, title: { text: 'Category Frequency Heatmap (Month vs Category)', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } }, xaxis: { type: 'category', categories: data.categories }, tooltip: { y: { formatter: function (val) { return val + " occurrences"; } } }
+        };
+        const chart = new ApexCharts(document.querySelector("#chartHeatmap"), options); chart.render(); return chart;
     }
 
     function renderKpiCards(cards) {
