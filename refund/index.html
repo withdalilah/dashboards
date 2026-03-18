@@ -6,41 +6,28 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <style>
-    /* PALETTE:
-       Blue: #8BA8E3
-       Cream: #F3F4E3
-       Salmon: #F58F79
-       GreyBlue: #DBDFEC
-       PinkWhite: #FFEAE5
-       Text: #444444
-    */
-
     /* MATTE THEME */
     body {
-      background-color: #F3F4E3; /* Cream Background */
+      background-color: #F3F4E3;
       font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       min-height: 100vh;
-      color: #444444; /* Dark Text */
+      color: #444444;
       padding-bottom: 50px;
     }
 
-    /* Remove floating shapes */
-    .bg-shape { display: none; }
-
-    /* Card Styling */
     .glass-panel {
       background: #FFFFFF;
       border-radius: 16px;
       padding: 1.5rem;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Subtle Shadow */
-      border: 1px solid #DBDFEC; /* GreyBlue Border */
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      border: 1px solid #DBDFEC;
       color: #444;
     }
 
     .glass-card {
       background: #FFFFFF;
       border-radius: 12px;
-      padding: 12px; /* Compact padding */
+      padding: 12px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -69,7 +56,6 @@
     }
     .glass-select:hover { border-color: #8BA8E3; }
 
-    /* Market Filter Buttons */
     .market-filter {
       background: #F3F4E3;
       border: 1px solid #DBDFEC;
@@ -82,28 +68,18 @@
       font-weight: 600;
       transition: all 0.2s;
     }
-    
-    .market-filter:hover {
-      background: #DBDFEC;
-      color: #333;
-    }
-    
-    .market-filter.active {
-      background: #8BA8E3; /* Blue Active */
-      color: white;
-      border-color: #8BA8E3;
-    }
+    .market-filter:hover { background: #DBDFEC; color: #333; }
+    .market-filter.active { background: #8BA8E3; color: white; border-color: #8BA8E3; }
 
-    /* Headers */
-    h1, h2, h3 { 
-      color: #8BA8E3; /* Blue Headers */
-      font-weight: 700;
-      text-shadow: none; 
-    }
-    
+    h1, h2, h3 { color: #8BA8E3; font-weight: 700; }
     canvas { max-height: 300px; }
 
-    /* MODAL STYLES */
+    /* Heatmap Table Styles */
+    .heatmap-table { width: 100%; border-collapse: collapse; text-align: center; }
+    .heatmap-table th { background: #F9FAFB; border: 1px solid #DBDFEC; padding: 10px; font-size: 12px; color: #8BA8E3; font-weight: 600; }
+    .heatmap-table td { border: 1px solid #DBDFEC; padding: 12px; font-size: 14px; font-weight: 600; transition: opacity 0.2s; }
+    .heatmap-table td:hover { opacity: 0.8; cursor: crosshair; }
+
     #dataModal { transition: opacity 0.3s ease; }
     .animate-scaleIn { animation: scaleIn 0.2s ease-out forwards; }
     @keyframes scaleIn {
@@ -111,31 +87,15 @@
       to { opacity: 1; transform: scale(1); }
     }
     
-    /* Table Styling */
     .table-container::-webkit-scrollbar { width: 8px; height: 8px; }
     .table-container::-webkit-scrollbar-thumb { background: #DBDFEC; border-radius: 4px; }
-    .table-container::-webkit-scrollbar-track { background: #f9f9f9; }
-    
-    table th { 
-      font-weight: 600; 
-      color: #8BA8E3; 
-      background: #F9FAFB; 
-      border-bottom: 2px solid #DBDFEC; 
-    }
-    table td { 
-      border-bottom: 1px solid #F3F4E3; 
-      color: #555; 
-    }
-    table tr:hover td { 
-      background: #F3F4E3; 
-      color: #333; 
-    }
+    table th { font-weight: 600; color: #8BA8E3; background: #F9FAFB; border-bottom: 2px solid #DBDFEC; }
+    table td { border-bottom: 1px solid #F3F4E3; color: #555; }
+    table tr:hover td { background: #F3F4E3; color: #333; }
 
-    /* Status Pills */
     .pill-closed { background: #E3F2FD; color: #1E88E5; border: 1px solid #BBDEFB; } 
     .pill-open { background: #FFF3E0; color: #F57C00; border: 1px solid #FFE0B2; } 
     
-    /* Export Button */
     .btn-export {
       background-color: #8BA8E3;
       color: white;
@@ -148,9 +108,7 @@
       gap: 4px;
       transition: background-color 0.2s;
     }
-    .btn-export:hover {
-      background-color: #7A97D3;
-    }
+    .btn-export:hover { background-color: #7A97D3; }
   </style>
 </head>
 <body class="p-4 md:p-6">
@@ -171,6 +129,14 @@
   <div id="kpi-container" class="grid grid-cols-2 md:grid-cols-7 gap-2 mb-8"></div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <div class="glass-panel lg:col-span-2 overflow-x-auto">
+      <h3 class="text-lg font-semibold mb-2">Refund Rate Over Time (% of Reservations)</h3>
+      <p class="text-xs opacity-70 mb-4 text-gray-400">Excludes 'Duplicate' tickets. The darker the red, the higher the percentage of valid refund tickets against total monthly reservations.</p>
+      <div id="heatmapContainer">
+         <span class="text-gray-400 text-sm">Loading table data...</span>
+      </div>
+    </div>
 
     <div class="glass-panel">
       <h3 class="text-lg font-semibold mb-4">Ticket Volume Trend</h3>
@@ -298,7 +264,7 @@
             </tr>
           </thead>
           <tbody id="modalTableBody" class="bg-white">
-            </tbody>
+          </tbody>
         </table>
       </div>
       
@@ -311,13 +277,10 @@
 
   <script>
     let rawData = [];
+    let reservationsData = [];
     let chartInstances = {};
     
-    // Ordered markets: Ireland is next to UK
     const markets = ['Portugal', 'France', 'UK', 'Ireland', 'Dubai', 'Spain'];
-    
-    // Palette reordered:
-    // Portugal (Salmon), France (Blue), UK (GreyBlue), Ireland (SoftGreen), Dubai (Gold), Spain (Pink)
     const marketColors = ['#F58F79', '#8BA8E3', '#A5B4FC', '#82CA9D', '#FCD34D', '#DBDFEC'];
     
     let chartFilters = {
@@ -330,13 +293,24 @@
     let chartData = {};
     let currentModalData = [];
 
+    // Fetches both datasets before rendering to prevent UI glitches
     window.onload = function() {
-      google.script.run.withSuccessHandler(onDataLoaded).getSheetData();
+      google.script.run
+        .withSuccessHandler(function(trackerPayload) {
+          google.script.run
+            .withSuccessHandler(function(resasPayload) {
+              onAllDataLoaded(trackerPayload, resasPayload);
+            })
+            .withFailureHandler(console.error)
+            .getReservationsData();
+        })
+        .withFailureHandler(console.error)
+        .getSheetData();
     };
 
-    function onDataLoaded(payload) {
-      const headers = payload.headers;
-      
+    function onAllDataLoaded(trackerPayload, resasPayload) {
+      // 1. Process Tracker Data
+      const headers = trackerPayload.headers;
       const findIdx = (names, exclude = []) => {
          const lowerHeaders = headers.map(h => h.toLowerCase().trim());
          for (let name of names) {
@@ -362,7 +336,7 @@
         subcategory: findIdx(['refund subcategory', 'subcategory'])
       };
 
-      rawData = payload.rows.map(row => {
+      rawData = trackerPayload.rows.map(row => {
         const dateStr = row[idx.date];
         const dateObj = parseDate(dateStr);
         let statusRaw = row[idx.status] || 'Open';
@@ -382,6 +356,27 @@
           refundStatus: row[idx.refundStatus]
         };
       }).filter(d => d.date);
+
+      // 2. Process Reservations Data
+      if (resasPayload) {
+        const rHeaders = resasPayload.headers;
+        const cIdx = rHeaders.indexOf('Country') !== -1 ? rHeaders.indexOf('Country') : 0;
+        const mIdx = rHeaders.indexOf('Month') !== -1 ? rHeaders.indexOf('Month') : 1;
+        const vIdx = rHeaders.indexOf('No. of Reservations') !== -1 ? rHeaders.indexOf('No. of Reservations') : 2;
+
+        reservationsData = resasPayload.rows.map(row => {
+          let c = row[cIdx] ? row[cIdx].trim() : '';
+          // Normalize names to match Tracker data
+          if (c.toLowerCase().includes('united arab emirates')) c = 'Dubai';
+          if (c.toLowerCase().includes('united kingdom')) c = 'UK';
+          
+          return {
+            country: c,
+            monthStr: row[mIdx] ? row[mIdx].trim() : '',
+            reservations: parseInt((row[vIdx] || "0").replace(/,/g, ''), 10) || 0
+          };
+        });
+      }
 
       populateMonthFilter();
       renderDashboard();
@@ -533,10 +528,8 @@
       if (e.target === this) closeModal();
     });
 
-    // --- Chart Filter Logic ---
     function setChartFilter(chartId, market) {
       chartFilters[chartId] = market;
-      
       document.querySelectorAll(`.market-filter-All-${chartId}, .market-filter-Portugal-${chartId}, .market-filter-France-${chartId}, .market-filter-UK-${chartId}, .market-filter-Dubai-${chartId}, .market-filter-Spain-${chartId}, .market-filter-Ireland-${chartId}`).forEach(btn => {
         btn.classList.remove('active');
       });
@@ -550,14 +543,12 @@
     function renderSpecificChart(chartId, winnerData, type, filterField, sourceData) {
       let displayData = winnerData;
       let displayLabels = markets;
-      
       const selectedFilter = chartFilters[chartId];
       
       if (selectedFilter !== 'All') {
         const marketData = winnerData.filter(w => w.market === selectedFilter);
         if (marketData.length > 0) {
           const singleMarket = marketData[0];
-          
           const allItemsForMarket = sourceData
             .filter(d => d.country === selectedFilter)
             .reduce((acc, row) => {
@@ -587,14 +578,12 @@
           displayLabels = displayData.map((item, idx) => `${idx + 1}. ${item.name}`);
         }
       }
-      
       createBarChart(chartId, displayData, type, filterField, sourceData, displayLabels);
     }
 
     // --- Main Rendering ---
     function renderDashboard() {
       const selectedMonth = document.getElementById('monthFilter').value;
-      
       let monthlyData;
       let rollingData;
       
@@ -612,6 +601,86 @@
       
       renderCards(monthlyData);
       renderCharts(monthlyData, rollingData);
+      renderHeatmapTable(); // Render our new custom table!
+    }
+
+    // NEW: Function to render the HTML Table Heatmap
+    function renderHeatmapTable() {
+      const container = document.getElementById('heatmapContainer');
+      if (!container) return;
+
+      // Find all unique months available chronologically to use as X-axis
+      const allMonths = [...new Set([
+        ...rawData.map(d => d.monthStr), 
+        ...reservationsData.map(d => d.monthStr)
+      ])].filter(m => m && m !== 'Unknown');
+      
+      allMonths.sort((a, b) => new Date(a) - new Date(b));
+
+      let matrixData = {};
+      let maxPct = 0.01; // Avoid divide by zero
+
+      // Calculate tickets and reservations matching
+      markets.forEach(market => {
+        matrixData[market] = {};
+        allMonths.forEach(month => {
+          // Count tickets: Matching market, month, ignoring "Duplicate"
+          const tickets = rawData.filter(d => 
+            d.country === market && 
+            d.monthStr === month && 
+            d.status.toLowerCase() !== 'duplicate'
+          ).length;
+
+          // Sum reservations
+          const resas = reservationsData.filter(d => 
+            d.country === market && 
+            d.monthStr === month
+          ).reduce((sum, r) => sum + r.reservations, 0);
+
+          let pct = 0;
+          if (resas > 0) pct = (tickets / resas) * 100;
+          if (pct > maxPct) maxPct = pct;
+
+          matrixData[market][month] = { pct, tickets, resas };
+        });
+      });
+
+      // Build the table HTML
+      let html = '<table class="heatmap-table">';
+      
+      // Header Row
+      html += '<thead><tr><th style="text-align:left;">MARKET</th>';
+      allMonths.forEach(month => {
+        html += `<th>${month}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+
+      // Rows for each Market
+      markets.forEach(market => {
+        html += `<tr><td style="text-align:left; font-weight:bold; color:#444;">${market}</td>`;
+        
+        allMonths.forEach(month => {
+          const cell = matrixData[market][month];
+          
+          // Calculate Red Intensity
+          // Use an rgba base so it naturally forms a gradient. 'rgba(239, 83, 80, X)' is a nice UI red.
+          let alpha = maxPct > 0 ? (cell.pct / maxPct) : 0;
+          let finalAlpha = cell.pct > 0 ? Math.max(0.1, alpha) : 0; 
+          
+          let bgColor = cell.pct > 0 ? `rgba(239, 83, 80, ${finalAlpha})` : '#FAFAFA';
+          let textColor = finalAlpha > 0.5 ? '#FFFFFF' : '#444444'; // Make text white if red is dark
+
+          let tooltip = `Tickets: ${cell.tickets}\nReservations: ${cell.resas}`;
+          let text = cell.resas > 0 ? cell.pct.toFixed(2) + '%' : 'N/A';
+
+          html += `<td style="background-color: ${bgColor}; color: ${textColor};" title="${tooltip}">${text}</td>`;
+        });
+        
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
     }
 
     function renderCards(data) {
@@ -655,7 +724,6 @@
         }
       };
 
-      // 1. Timeline (Interactive)
       const months = [...new Set(rawData.map(d => d.monthStr))].sort((a,b) => new Date(a) - new Date(b));
       const lineDatasets = markets.map((m, i) => ({
         label: m,
@@ -671,9 +739,7 @@
           legend: { display: true, labels: { color: '#444' } },
           tooltip: {
             callbacks: {
-              label: function(context) {
-                return `${context.dataset.label}: ${context.raw} Tickets`;
-              }
+              label: function(context) { return `${context.dataset.label}: ${context.raw} Tickets`; }
             }
           }
         },
@@ -681,18 +747,10 @@
           if (elements.length > 0) {
             const idx = elements[0].index;
             const datasetIdx = elements[0].datasetIndex;
-            
             const selectedMonth = months[idx];
             const selectedMarket = markets[datasetIdx];
-            
-            // Filter raw data for this specific point
             const details = rawData.filter(d => d.country === selectedMarket && d.monthStr === selectedMonth);
-            
-            openModal(
-              `${selectedMarket} - ${selectedMonth}`, 
-              `Ticket Volume Details (${details.length} Tickets)`, 
-              details
-            );
+            openModal(`${selectedMarket} - ${selectedMonth}`, `Ticket Volume Details (${details.length} Tickets)`, details);
           }
         },
         onHover: (event, chartElement) => {
@@ -702,17 +760,11 @@
 
       createChart('lineChartTickets', 'line', { labels: months, datasets: lineDatasets }, lineChartOptions);
 
-      // 2. Status
       const statuses = [...new Set(monthlyData.map(d => d.status))];
       const statusCounts = statuses.map(s => monthlyData.filter(d => d.status === s).length);
       createChart('pieChartStatus', 'doughnut', {
         labels: statuses,
-        datasets: [{
-          data: statusCounts,
-          backgroundColor: marketColors,
-          borderColor: '#FFFFFF',
-          borderWidth: 2
-        }]
+        datasets: [{ data: statusCounts, backgroundColor: marketColors, borderColor: '#FFFFFF', borderWidth: 2 }]
       }, { ...commonOptions, plugins: { legend: { position: 'right', labels: { color: '#444' } } }, scales: { x: {display:false}, y: {display:false} } });
 
       const closedData = monthlyData.filter(d => d.status.toLowerCase().includes('closed'));
@@ -738,86 +790,58 @@
             if (key === 'Unknown') continue; 
             const compareVal = metric === 'count' ? obj.count : obj.amt;
             if (compareVal > maxVal) { 
-               maxVal = compareVal; 
-               maxKey = key; 
-               assocCount = obj.count; 
+               maxVal = compareVal; maxKey = key; assocCount = obj.count; 
             }
           }
           if (maxKey === 'N/A' && groups['Unknown']) {
-             maxKey = 'Unknown'; 
-             maxVal = metric === 'count' ? groups['Unknown'].count : groups['Unknown'].amt;
+             maxKey = 'Unknown'; maxVal = metric === 'count' ? groups['Unknown'].count : groups['Unknown'].amt;
              assocCount = groups['Unknown'].count;
           }
           return { name: maxKey, val: Math.max(0, maxVal), count: assocCount, market: market };
         });
       }
 
-      // 3. Top Category ($)
       const topCats = getWinners(closedData, 'category', 'amount');
       chartData['barChartCategory'] = { winnerData: topCats, type: 'amount', filterField: 'category', sourceData: closedData };
       renderSpecificChart('barChartCategory', topCats, 'amount', 'category', closedData);
 
-      // 4. Top Subcategory ($)
       const topSub = getWinners(closedData, 'subcategory', 'amount');
       chartData['barChartSubcategory'] = { winnerData: topSub, type: 'amount', filterField: 'subcategory', sourceData: closedData };
       renderSpecificChart('barChartSubcategory', topSub, 'amount', 'subcategory', closedData);
 
-      // 5. Top Property ($)
       const topPropAmt = getWinners(closedData, 'propertyId', 'amount');
       chartData['barChartPropertyAmt'] = { winnerData: topPropAmt, type: 'amount', filterField: 'propertyId', sourceData: closedData };
       renderSpecificChart('barChartPropertyAmt', topPropAmt, 'amount', 'propertyId', closedData);
 
-      // 6. Most Repeated Property (Count) - EXCLUDES DUPLICATES
       const rollingNonDuplicate = rollingData.filter(d => d.status.toLowerCase() !== 'duplicate');
-      
       const topPropCount = getWinners(rollingNonDuplicate, 'propertyId', 'count');
       chartData['barChartPropertyCount'] = { winnerData: topPropCount, type: 'count', filterField: 'propertyId', sourceData: rollingNonDuplicate };
       renderSpecificChart('barChartPropertyCount', topPropCount, 'count', 'propertyId', rollingNonDuplicate);
 
-      // 7. Missing Categories
-      const closedOrMultipleData = monthlyData.filter(d => 
-        d.status.toLowerCase().includes('closed') || d.status.toLowerCase().includes('multiple')
-      );
-      
+      const closedOrMultipleData = monthlyData.filter(d => d.status.toLowerCase().includes('closed') || d.status.toLowerCase().includes('multiple'));
       const missingCountsByMarket = markets.map(m => {
         return closedOrMultipleData.filter(d => d.country === m && (!d.category || d.category.trim() === '')).length;
       });
 
       createChart('pieChartMissing', 'pie', {
         labels: markets,
-        datasets: [{
-          data: missingCountsByMarket,
-          backgroundColor: marketColors,
-          borderColor: '#FFFFFF',
-          borderWidth: 2
-        }]
+        datasets: [{ data: missingCountsByMarket, backgroundColor: marketColors, borderColor: '#FFFFFF', borderWidth: 2 }]
       }, {
         ...commonOptions,
         scales: { x: {display:false}, y: {display:false} },
         plugins: { 
           legend: { position: 'right', labels: { color: '#444' } },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                const val = context.raw;
-                return `${context.label}: ${val} Missing`;
-              }
-            }
-          }
+          tooltip: { callbacks: { label: function(context) { return `${context.label}: ${context.raw} Missing`; } } }
         },
         onClick: (e, elements) => {
           if(elements.length > 0) {
             const idx = elements[0].index;
             const market = markets[idx];
-            const details = closedOrMultipleData.filter(d => 
-               d.country === market && (!d.category || d.category.trim() === '')
-            );
+            const details = closedOrMultipleData.filter(d => d.country === market && (!d.category || d.category.trim() === ''));
             openModal(`Missing Categories - ${market}`, 'Tickets with missing categories', details);
           }
         },
-        onHover: (event, chartElement) => {
-            event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
-        }
+        onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; }
       });
     }
 
@@ -840,30 +864,23 @@
           }]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
+          responsive: true, maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
             tooltip: {
               callbacks: {
                 title: function(context) {
-                   const idx = context[0].dataIndex;
-                   const item = winnerData[idx];
+                   const item = winnerData[context[0].dataIndex];
                    return `${item.market} (Tickets: ${item.count})`;
                 },
                 label: function(context) {
-                  const idx = context.dataIndex;
-                  const item = winnerData[idx];
-                  const mkt = item.market;
-                  
+                  const item = winnerData[context.dataIndex];
                   let valDisplay = item.val;
                   if (type === 'count') {
                      valDisplay = item.val + ' Refunds';
                   } else {
-                     const curr = getCurrency(mkt);
-                     valDisplay = curr === ' AED' ? 
-                        item.val.toLocaleString() + ' AED' : 
-                        curr + item.val.toLocaleString();
+                     const curr = getCurrency(item.market);
+                     valDisplay = curr === ' AED' ? item.val.toLocaleString() + ' AED' : curr + item.val.toLocaleString();
                   }
                   return `${item.name}: ${valDisplay}`;
                 }
@@ -872,21 +889,13 @@
           },
           onClick: (e, elements) => {
             if (elements.length > 0) {
-              const idx = elements[0].index;
-              const item = winnerData[idx];
+              const item = winnerData[elements[0].index];
               if (item.name === 'N/A') return;
-              const details = sourceData.filter(d => {
-                 const valToCheck = d[filterField] || 'Unknown';
-                 return d.country === item.market && valToCheck === item.name;
-              });
-              const title = `Details for ${item.market}`;
-              const subtitle = `Filter: ${filterField} = "${item.name}"`;
-              openModal(title, subtitle, details);
+              const details = sourceData.filter(d => d.country === item.market && (d[filterField] || 'Unknown') === item.name);
+              openModal(`Details for ${item.market}`, `Filter: ${filterField} = "${item.name}"`, details);
             }
           },
-          onHover: (event, chartElement) => {
-            event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
-          },
+          onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; },
           scales: {
             y: { beginAtZero: true, grid: { color: '#F0F0F0' }, ticks: { color: '#666' } },
             x: { grid: { display: false }, ticks: { color: '#444', font: { weight: 'bold' } } }
