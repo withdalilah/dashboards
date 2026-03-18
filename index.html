@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    /* PALETTE:
+       Blue: #8BA8E3
+       Cream: #F3F4E3
+       Salmon: #F58F79
+       GreyBlue: #DBDFEC
+       PinkWhite: #FFEAE5
+       Text: #444444
+    */
+
+    /* MATTE THEME */
+    body {
+      background-color: #F3F4E3; /* Cream Background */
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      color: #444444; /* Dark Text */
+      padding-bottom: 50px;
+    }
+
+    /* Remove floating shapes */
+    .bg-shape { display: none; }
+
+    /* Card Styling */
+    .glass-panel {
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Subtle Shadow */
+      border: 1px solid #DBDFEC; /* GreyBlue Border */
+      color: #444;
+    }
+
+    .glass-card {
+      background: #FFFFFF;
+      border-radius: 12px;
+      padding: 12px; /* Compact padding */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      color: #444;
+      border: 1px solid #DBDFEC;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      min-width: 0;
+    }
+    .glass-card:hover { 
+      transform: translateY(-3px); 
+      box-shadow: 0 8px 16px rgba(139, 168, 227, 0.2); 
+      border-color: #8BA8E3;
+    }
+
+    .glass-select {
+      background: #FFFFFF;
+      border: 1px solid #DBDFEC;
+      color: #444;
+      padding: 8px 16px;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .glass-select:hover { border-color: #8BA8E3; }
+
+    /* Market Filter Buttons */
+    .market-filter {
+      background: #F3F4E3;
+      border: 1px solid #DBDFEC;
+      color: #666;
+      padding: 6px 12px;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    
+    .market-filter:hover {
+      background: #DBDFEC;
+      color: #333;
+    }
+    
+    .market-filter.active {
+      background: #8BA8E3; /* Blue Active */
+      color: white;
+      border-color: #8BA8E3;
+    }
+
+    /* Headers */
+    h1, h2, h3 { 
+      color: #8BA8E3; /* Blue Headers */
+      font-weight: 700;
+      text-shadow: none; 
+    }
+    
+    canvas { max-height: 300px; }
+
+    /* MODAL STYLES */
+    #dataModal { transition: opacity 0.3s ease; }
+    .animate-scaleIn { animation: scaleIn 0.2s ease-out forwards; }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    
+    /* Table Styling */
+    .table-container::-webkit-scrollbar { width: 8px; height: 8px; }
+    .table-container::-webkit-scrollbar-thumb { background: #DBDFEC; border-radius: 4px; }
+    .table-container::-webkit-scrollbar-track { background: #f9f9f9; }
+    
+    table th { 
+      font-weight: 600; 
+      color: #8BA8E3; 
+      background: #F9FAFB; 
+      border-bottom: 2px solid #DBDFEC; 
+    }
+    table td { 
+      border-bottom: 1px solid #F3F4E3; 
+      color: #555; 
+    }
+    table tr:hover td { 
+      background: #F3F4E3; 
+      color: #333; 
+    }
+
+    /* Status Pills */
+    .pill-closed { background: #E3F2FD; color: #1E88E5; border: 1px solid #BBDEFB; } 
+    .pill-open { background: #FFF3E0; color: #F57C00; border: 1px solid #FFE0B2; } 
+    
+    /* Export Button */
+    .btn-export {
+      background-color: #8BA8E3;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background-color 0.2s;
+    }
+    .btn-export:hover {
+      background-color: #7A97D3;
+    }
+  </style>
+</head>
+<body class="p-4 md:p-6">
+
+  <div class="flex flex-col md:flex-row justify-between items-center mb-6 glass-panel">
+    <div>
+      <h1 class="text-3xl font-bold tracking-wide">Global Refund Tracker</h1>
+      <p class="text-sm opacity-60 mt-1 text-gray-500">Analytics Dashboard</p>
+    </div>
+    <div class="mt-4 md:mt-0 flex items-center gap-4">
+      <label class="font-semibold text-gray-600">Select Month:</label>
+      <select id="monthFilter" class="glass-select" onchange="renderDashboard()">
+        <option value="All">Loading...</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="kpi-container" class="grid grid-cols-2 md:grid-cols-7 gap-2 mb-8"></div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <div class="glass-panel">
+      <h3 class="text-lg font-semibold mb-4">Ticket Volume Trend</h3>
+      <p class="text-xs opacity-70 mb-2 text-gray-400">Click on any point to view details.</p>
+      <canvas id="lineChartTickets"></canvas>
+    </div>
+
+    <div class="glass-panel">
+      <h3 class="text-lg font-semibold mb-4">Refund Status Distribution (Ticket Count)</h3>
+      <canvas id="pieChartStatus"></canvas>
+    </div>
+
+    <div class="glass-panel transition-colors">
+      <div class="flex justify-between items-start">
+        <h3 class="text-lg font-semibold mb-4">Highest Refund Category (By Amount)</h3>
+        <div class="flex gap-2 text-[9px]">
+          <button onclick="setChartFilter('barChartCategory', 'All')" class="market-filter market-filter-All-barChartCategory active">All</button>
+          <button onclick="setChartFilter('barChartCategory', 'Portugal')" class="market-filter market-filter-Portugal-barChartCategory">PT</button>
+          <button onclick="setChartFilter('barChartCategory', 'France')" class="market-filter market-filter-France-barChartCategory">FR</button>
+          <button onclick="setChartFilter('barChartCategory', 'UK')" class="market-filter market-filter-UK-barChartCategory">UK</button>
+          <button onclick="setChartFilter('barChartCategory', 'Ireland')" class="market-filter market-filter-Ireland-barChartCategory">IE</button>
+          <button onclick="setChartFilter('barChartCategory', 'Dubai')" class="market-filter market-filter-Dubai-barChartCategory">AE</button>
+          <button onclick="setChartFilter('barChartCategory', 'Spain')" class="market-filter market-filter-Spain-barChartCategory">ES</button>
+        </div>
+      </div>
+      <p class="text-xs opacity-70 mb-2 text-gray-400">Based on <b>Closed</b> tickets only.</p>
+      <canvas id="barChartCategory"></canvas>
+    </div>
+
+    <div class="glass-panel transition-colors">
+      <div class="flex justify-between items-start">
+        <h3 class="text-lg font-semibold mb-4">Highest Refund Subcategory (By Amount)</h3>
+        <div class="flex gap-2 text-[9px]">
+          <button onclick="setChartFilter('barChartSubcategory', 'All')" class="market-filter market-filter-All-barChartSubcategory active">All</button>
+          <button onclick="setChartFilter('barChartSubcategory', 'Portugal')" class="market-filter market-filter-Portugal-barChartSubcategory">PT</button>
+          <button onclick="setChartFilter('barChartSubcategory', 'France')" class="market-filter market-filter-France-barChartSubcategory">FR</button>
+          <button onclick="setChartFilter('barChartSubcategory', 'UK')" class="market-filter market-filter-UK-barChartSubcategory">UK</button>
+          <button onclick="setChartFilter('barChartSubcategory', 'Ireland')" class="market-filter market-filter-Ireland-barChartSubcategory">IE</button>
+          <button onclick="setChartFilter('barChartSubcategory', 'Dubai')" class="market-filter market-filter-Dubai-barChartSubcategory">AE</button>
+          <button onclick="setChartFilter('barChartSubcategory', 'Spain')" class="market-filter market-filter-Spain-barChartSubcategory">ES</button>
+        </div>
+      </div>
+      <p class="text-xs opacity-70 mb-2 text-gray-400">Based on <b>Closed</b> tickets only.</p>
+      <canvas id="barChartSubcategory"></canvas>
+    </div>
+
+    <div class="glass-panel transition-colors">
+      <div class="flex justify-between items-start">
+        <h3 class="text-lg font-semibold mb-4">Highest Refund Property (By Amount)</h3>
+        <div class="flex gap-2 text-[9px]">
+          <button onclick="setChartFilter('barChartPropertyAmt', 'All')" class="market-filter market-filter-All-barChartPropertyAmt active">All</button>
+          <button onclick="setChartFilter('barChartPropertyAmt', 'Portugal')" class="market-filter market-filter-Portugal-barChartPropertyAmt">PT</button>
+          <button onclick="setChartFilter('barChartPropertyAmt', 'France')" class="market-filter market-filter-France-barChartPropertyAmt">FR</button>
+          <button onclick="setChartFilter('barChartPropertyAmt', 'UK')" class="market-filter market-filter-UK-barChartPropertyAmt">UK</button>
+          <button onclick="setChartFilter('barChartPropertyAmt', 'Ireland')" class="market-filter market-filter-Ireland-barChartPropertyAmt">IE</button>
+          <button onclick="setChartFilter('barChartPropertyAmt', 'Dubai')" class="market-filter market-filter-Dubai-barChartPropertyAmt">AE</button>
+          <button onclick="setChartFilter('barChartPropertyAmt', 'Spain')" class="market-filter market-filter-Spain-barChartPropertyAmt">ES</button>
+        </div>
+      </div>
+      <p class="text-xs opacity-70 mb-2 text-gray-400">Based on <b>Closed</b> tickets only.</p>
+      <canvas id="barChartPropertyAmt"></canvas>
+    </div>
+
+    <div class="glass-panel transition-colors">
+      <div class="flex justify-between items-start">
+        <h3 class="text-lg font-semibold mb-4">Most Repeated Property ID (3-Month Rolling)</h3>
+        <div class="flex gap-2 text-[9px]">
+          <button onclick="setChartFilter('barChartPropertyCount', 'All')" class="market-filter market-filter-All-barChartPropertyCount active">All</button>
+          <button onclick="setChartFilter('barChartPropertyCount', 'Portugal')" class="market-filter market-filter-Portugal-barChartPropertyCount">PT</button>
+          <button onclick="setChartFilter('barChartPropertyCount', 'France')" class="market-filter market-filter-France-barChartPropertyCount">FR</button>
+          <button onclick="setChartFilter('barChartPropertyCount', 'UK')" class="market-filter market-filter-UK-barChartPropertyCount">UK</button>
+          <button onclick="setChartFilter('barChartPropertyCount', 'Ireland')" class="market-filter market-filter-Ireland-barChartPropertyCount">IE</button>
+          <button onclick="setChartFilter('barChartPropertyCount', 'Dubai')" class="market-filter market-filter-Dubai-barChartPropertyCount">AE</button>
+          <button onclick="setChartFilter('barChartPropertyCount', 'Spain')" class="market-filter market-filter-Spain-barChartPropertyCount">ES</button>
+        </div>
+      </div>
+      <p class="text-xs opacity-70 mb-2 text-gray-400">Most tickets (Open & Closed) in last 3 months. Excludes duplicates.</p>
+      <canvas id="barChartPropertyCount"></canvas>
+    </div>
+
+    <div class="glass-panel transition-colors">
+      <div class="flex justify-between items-start">
+        <h3 class="text-lg font-semibold mb-4">Missing Categories</h3>
+      </div>
+      <p class="text-xs opacity-70 mb-2 text-gray-400">Tickets with status <b>Closed</b> or <b>Multiple</b> that have missing/empty categories.</p>
+      <canvas id="pieChartMissing"></canvas>
+    </div>
+
+  </div>
+
+  <div id="dataModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+    <div class="glass-panel w-full max-w-5xl h-[85vh] flex flex-col relative animate-scaleIn shadow-2xl border-0">
+      
+      <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+        <div>
+          <h2 id="modalTitle" class="text-2xl font-bold">Details</h2>
+          <p id="modalSubtitle" class="text-sm opacity-70 mt-1 text-gray-500">Filtered View</p>
+        </div>
+        <div class="flex items-center gap-4">
+          <button onclick="downloadCSV()" class="btn-export">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export CSV
+          </button>
+          <button onclick="closeModal()" class="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-auto flex-1 table-container">
+        <table class="w-full text-left text-sm border-separate border-spacing-0">
+          <thead class="sticky top-0 bg-white z-10 shadow-sm">
+            <tr>
+              <th class="p-4 rounded-tl-lg">Date</th>
+              <th class="p-4">Ticket ID</th>
+              <th class="p-4">Property</th>
+              <th class="p-4">Category</th>
+              <th class="p-4">Subcategory</th>
+              <th class="p-4">Status</th>
+              <th class="p-4">Refund Status</th> <th class="p-4 text-right rounded-tr-lg">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="modalTableBody" class="bg-white">
+            </tbody>
+        </table>
+      </div>
+      
+      <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs opacity-50 text-gray-400">
+        Showing filtered results based on selection.
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let rawData = [];
+    let chartInstances = {};
+    
+    // Ordered markets: Ireland is next to UK
+    const markets = ['Portugal', 'France', 'UK', 'Ireland', 'Dubai', 'Spain'];
+    
+    // Palette reordered:
+    // Portugal (Salmon), France (Blue), UK (GreyBlue), Ireland (SoftGreen), Dubai (Gold), Spain (Pink)
+    const marketColors = ['#F58F79', '#8BA8E3', '#A5B4FC', '#82CA9D', '#FCD34D', '#DBDFEC'];
+    
+    let chartFilters = {
+      'barChartCategory': 'All',
+      'barChartSubcategory': 'All',
+      'barChartPropertyAmt': 'All',
+      'barChartPropertyCount': 'All',
+      'barChartMissingCategory': 'All'
+    };
+    let chartData = {};
+    let currentModalData = [];
+
+    window.onload = function() {
+      google.script.run.withSuccessHandler(onDataLoaded).getSheetData();
+    };
+
+    function onDataLoaded(payload) {
+      const headers = payload.headers;
+      
+      const findIdx = (names, exclude = []) => {
+         const lowerHeaders = headers.map(h => h.toLowerCase().trim());
+         for (let name of names) {
+            const idx = lowerHeaders.findIndex(h => h === name.toLowerCase() && !exclude.some(ex => h.includes(ex)));
+            if (idx !== -1) return idx;
+         }
+         for (let name of names) {
+            const idx = lowerHeaders.findIndex(h => h.includes(name.toLowerCase()) && !exclude.some(ex => h.includes(ex)));
+            if (idx !== -1) return idx;
+         }
+         return -1;
+      };
+
+      const idx = {
+        date: findIdx(['refund requested at', 'date']),
+        country: findIdx(['country', 'market']),
+        amount: findIdx(['amount', 'value']),
+        ticketId: findIdx(['ticket id', 'ticket']),
+        propertyId: findIdx(['property id', 'property']),
+        status: findIdx(['status']),
+        refundStatus: findIdx(['refund status']),
+        category: findIdx(['refund category', 'category']),
+        subcategory: findIdx(['refund subcategory', 'subcategory'])
+      };
+
+      rawData = payload.rows.map(row => {
+        const dateStr = row[idx.date];
+        const dateObj = parseDate(dateStr);
+        let statusRaw = row[idx.status] || 'Open';
+        statusRaw = statusRaw.trim(); 
+        
+        return {
+          date: dateObj,
+          monthStr: dateObj ? getMonthYearStr(dateObj) : 'Unknown',
+          dateDisplay: dateObj ? dateObj.toLocaleDateString() : dateStr,
+          country: normalizeCountry(row[idx.country]),
+          amount: parseFloat(row[idx.amount] || 0),
+          ticketId: row[idx.ticketId],
+          category: row[idx.category],
+          subcategory: row[idx.subcategory],
+          propertyId: row[idx.propertyId],
+          status: statusRaw,
+          refundStatus: row[idx.refundStatus]
+        };
+      }).filter(d => d.date);
+
+      populateMonthFilter();
+      renderDashboard();
+    }
+
+    function parseDate(str) {
+      if (!str) return null;
+      const parts = str.split(' ')[0].split('/');
+      if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
+      return new Date(str);
+    }
+
+    function getMonthYearStr(date) {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    function normalizeCountry(c) {
+      if (!c) return 'Other';
+      if (c.toLowerCase().includes('united kingdom')) return 'UK';
+      return c.trim();
+    }
+
+    function populateMonthFilter() {
+      const select = document.getElementById('monthFilter');
+      const uniqueMonths = [...new Set(rawData.map(d => d.monthStr))];
+      uniqueMonths.sort((a, b) => new Date(b) - new Date(a));
+      
+      select.innerHTML = '';
+      
+      const allOpt = document.createElement('option');
+      allOpt.value = 'All';
+      allOpt.innerText = 'All Months';
+      select.appendChild(allOpt);
+      
+      uniqueMonths.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.innerText = m;
+        select.appendChild(opt);
+      });
+      if (uniqueMonths.length > 0) select.value = uniqueMonths[0];
+    }
+
+    function getCurrency(market) {
+      if (market === 'UK') return '£';
+      if (market === 'Dubai') return ' AED';
+      return '€';
+    }
+
+    function getExchangeRate(market) {
+      const rates = {
+        'Portugal': 1.0, 'France': 1.0, 'Spain': 1.0, 'Ireland': 1.0,
+        'UK': 0.84, 'Dubai': 0.27, 'Other': 1.0
+      };
+      return rates[market] || rates['Other'];
+    }
+
+    function convertToEUR(amount, market) {
+      return amount * getExchangeRate(market);
+    }
+
+    // --- MODAL & EXPORT LOGIC ---
+    function openModal(title, subtitle, dataRows) {
+      currentModalData = dataRows;
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('modalSubtitle').innerText = subtitle;
+      
+      const tbody = document.getElementById('modalTableBody');
+      tbody.innerHTML = '';
+
+      if (dataRows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center opacity-50">No matching records found.</td></tr>`;
+      } else {
+        dataRows.forEach(row => {
+          const tr = document.createElement('tr');
+          const currency = getCurrency(row.country);
+          const amtStr = currency === ' AED' ? row.amount.toFixed(2) + currency : currency + row.amount.toFixed(2);
+          
+          const statusClass = row.status.toLowerCase().includes('closed') ? 'pill-closed' : 'pill-open';
+          
+          tr.innerHTML = `
+            <td class="p-4 whitespace-nowrap">${row.dateDisplay}</td>
+            <td class="p-4 font-mono text-xs bg-gray-50 rounded text-gray-600">${row.ticketId || '-'}</td>
+            <td class="p-4">${row.propertyId || '-'}</td>
+            <td class="p-4">${row.category || '-'}</td>
+            <td class="p-4">${row.subcategory || '-'}</td>
+            <td class="p-4"><span class="px-2 py-1 rounded text-xs ${statusClass}">${row.status}</span></td>
+            <td class="p-4">${row.refundStatus || '-'}</td> <td class="p-4 text-right font-bold text-gray-700">${amtStr}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      const modal = document.getElementById('dataModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('dataModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function openKeyCardModal(market) {
+      const monthFilter = document.getElementById('monthFilter').value;
+      const data = rawData.filter(d => 
+        d.country === market && 
+        (monthFilter === 'All' || d.monthStr === monthFilter)
+      );
+      openModal(`${market} Refunds`, `Tickets for ${monthFilter === 'All' ? 'All Months' : monthFilter}`, data);
+    }
+
+    function downloadCSV() {
+      if (!currentModalData || currentModalData.length === 0) return;
+
+      const headers = ['Date', 'Ticket ID', 'Property', 'Category', 'Subcategory', 'Status', 'Refund Status', 'Amount', 'Country'];
+      const csvRows = [headers.join(',')];
+
+      currentModalData.forEach(row => {
+        const values = [
+          `"${row.dateDisplay}"`,
+          `"${row.ticketId || ''}"`,
+          `"${row.propertyId || ''}"`,
+          `"${(row.category || '').replace(/"/g, '""')}"`,
+          `"${(row.subcategory || '').replace(/"/g, '""')}"`,
+          `"${row.status || ''}"`,
+          `"${row.refundStatus || ''}"`,
+          `"${row.amount || 0}"`,
+          `"${row.country || ''}"`
+        ];
+        csvRows.push(values.join(','));
+      });
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'refund_data_export.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    document.getElementById('dataModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    // --- Chart Filter Logic ---
+    function setChartFilter(chartId, market) {
+      chartFilters[chartId] = market;
+      
+      document.querySelectorAll(`.market-filter-All-${chartId}, .market-filter-Portugal-${chartId}, .market-filter-France-${chartId}, .market-filter-UK-${chartId}, .market-filter-Dubai-${chartId}, .market-filter-Spain-${chartId}, .market-filter-Ireland-${chartId}`).forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.querySelector(`.market-filter-${market}-${chartId}`).classList.add('active');
+      
+      if (chartData[chartId]) {
+        renderSpecificChart(chartId, chartData[chartId].winnerData, chartData[chartId].type, chartData[chartId].filterField, chartData[chartId].sourceData);
+      }
+    }
+
+    function renderSpecificChart(chartId, winnerData, type, filterField, sourceData) {
+      let displayData = winnerData;
+      let displayLabels = markets;
+      
+      const selectedFilter = chartFilters[chartId];
+      
+      if (selectedFilter !== 'All') {
+        const marketData = winnerData.filter(w => w.market === selectedFilter);
+        if (marketData.length > 0) {
+          const singleMarket = marketData[0];
+          
+          const allItemsForMarket = sourceData
+            .filter(d => d.country === selectedFilter)
+            .reduce((acc, row) => {
+              const key = row[filterField] || 'Unknown';
+              if (!acc[key]) acc[key] = { amt: 0, count: 0, name: key };
+              acc[key].amt += row.amount;
+              acc[key].count += 1;
+              return acc;
+            }, {});
+          
+          const sortedItems = Object.values(allItemsForMarket)
+            .filter(item => item.name !== 'Unknown')
+            .sort((a, b) => {
+              const aVal = type === 'count' ? a.count : a.amt;
+              const bVal = type === 'count' ? b.count : b.amt;
+              return bVal - aVal;
+            })
+            .slice(0, 4);
+          
+          displayData = sortedItems.map((item, idx) => ({
+            name: item.name,
+            val: type === 'count' ? item.count : item.amt,
+            count: item.count,
+            market: selectedFilter
+          }));
+          
+          displayLabels = displayData.map((item, idx) => `${idx + 1}. ${item.name}`);
+        }
+      }
+      
+      createBarChart(chartId, displayData, type, filterField, sourceData, displayLabels);
+    }
+
+    // --- Main Rendering ---
+    function renderDashboard() {
+      const selectedMonth = document.getElementById('monthFilter').value;
+      
+      let monthlyData;
+      let rollingData;
+      
+      if (selectedMonth === 'All') {
+        monthlyData = rawData;
+        rollingData = rawData;
+      } else {
+        monthlyData = rawData.filter(d => d.monthStr === selectedMonth);
+        const selDate = new Date(selectedMonth);
+        const startWindow = new Date(selDate);
+        startWindow.setMonth(startWindow.getMonth() - 2); 
+        const endDate = new Date(selDate.getFullYear(), selDate.getMonth() + 1, 0);
+        rollingData = rawData.filter(d => d.date >= new Date(startWindow.getFullYear(), startWindow.getMonth(), 1) && d.date <= endDate);
+      }
+      
+      renderCards(monthlyData);
+      renderCharts(monthlyData, rollingData);
+    }
+
+    function renderCards(data) {
+      const container = document.getElementById('kpi-container');
+      container.innerHTML = '';
+      
+      markets.forEach(market => {
+        const mData = data.filter(d => d.country === market);
+        const total = mData.reduce((sum, d) => sum + d.amount, 0);
+        const curr = getCurrency(market);
+        
+        let displayStr = curr === ' AED' ? 
+          `${total.toLocaleString(undefined, {maximumFractionDigits:0})} AED` : 
+          `${curr}${total.toLocaleString(undefined, {maximumFractionDigits:0})}`;
+
+        container.innerHTML += `
+          <div class="glass-card" onclick="openKeyCardModal('${market}')">
+            <h4 class="text-xs font-bold uppercase tracking-widest text-[#8BA8E3] truncate">${market}</h4>
+            <div class="text-xl font-bold mt-1 text-[#444] truncate">${displayStr}</div>
+            <div class="text-[10px] mt-1 text-gray-400 truncate">${mData.length} refunds <span class="hidden xl:inline float-right hover:text-[#8BA8E3]">View</span></div>
+          </div>`;
+      });
+      
+      const totalAllMarkets = data.reduce((sum, d) => sum + convertToEUR(d.amount, d.country), 0);
+      container.innerHTML += `
+        <div class="glass-card border-[#8BA8E3] shadow-md">
+          <h4 class="text-xs font-bold uppercase tracking-widest text-[#F58F79] truncate">Total</h4>
+          <div class="text-xl font-bold mt-1 text-[#444] truncate">€${totalAllMarkets.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+          <div class="text-[10px] mt-1 text-gray-400 truncate">Converted to EURO (Approx)</div>
+        </div>`;
+    }
+
+    function renderCharts(monthlyData, rollingData) {
+      const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } }, 
+        scales: {
+          y: { grid: { color: '#F0F0F0' }, ticks: { color: '#666' } },
+          x: { grid: { color: '#F0F0F0' }, ticks: { color: '#666' } }
+        }
+      };
+
+      // 1. Timeline (Interactive)
+      const months = [...new Set(rawData.map(d => d.monthStr))].sort((a,b) => new Date(a) - new Date(b));
+      const lineDatasets = markets.map((m, i) => ({
+        label: m,
+        data: months.map(mon => rawData.filter(d => d.country === m && d.monthStr === mon).length),
+        borderColor: marketColors[i],
+        backgroundColor: marketColors[i],
+        tension: 0.4
+      }));
+
+      const lineChartOptions = {
+        ...commonOptions,
+        plugins: { 
+          legend: { display: true, labels: { color: '#444' } },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: ${context.raw} Tickets`;
+              }
+            }
+          }
+        },
+        onClick: (e, elements) => {
+          if (elements.length > 0) {
+            const idx = elements[0].index;
+            const datasetIdx = elements[0].datasetIndex;
+            
+            const selectedMonth = months[idx];
+            const selectedMarket = markets[datasetIdx];
+            
+            // Filter raw data for this specific point
+            const details = rawData.filter(d => d.country === selectedMarket && d.monthStr === selectedMonth);
+            
+            openModal(
+              `${selectedMarket} - ${selectedMonth}`, 
+              `Ticket Volume Details (${details.length} Tickets)`, 
+              details
+            );
+          }
+        },
+        onHover: (event, chartElement) => {
+          event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+        }
+      };
+
+      createChart('lineChartTickets', 'line', { labels: months, datasets: lineDatasets }, lineChartOptions);
+
+      // 2. Status
+      const statuses = [...new Set(monthlyData.map(d => d.status))];
+      const statusCounts = statuses.map(s => monthlyData.filter(d => d.status === s).length);
+      createChart('pieChartStatus', 'doughnut', {
+        labels: statuses,
+        datasets: [{
+          data: statusCounts,
+          backgroundColor: marketColors,
+          borderColor: '#FFFFFF',
+          borderWidth: 2
+        }]
+      }, { ...commonOptions, plugins: { legend: { position: 'right', labels: { color: '#444' } } }, scales: { x: {display:false}, y: {display:false} } });
+
+      const closedData = monthlyData.filter(d => d.status.toLowerCase().includes('closed'));
+
+      function getWinners(dataSrc, field, metric = 'amount') {
+        return markets.map(market => {
+          const mData = dataSrc.filter(d => d.country === market);
+          if (mData.length === 0) return { name: 'N/A', val: 0, count: 0, market: market };
+
+          const groups = {};
+          mData.forEach(d => {
+            const key = d[field] || 'Unknown';
+            if (!groups[key]) groups[key] = { amt: 0, count: 0 };
+            groups[key].amt += d.amount;
+            groups[key].count += 1;
+          });
+
+          let maxKey = 'N/A';
+          let maxVal = -1;
+          let assocCount = 0;
+
+          for (const [key, obj] of Object.entries(groups)) {
+            if (key === 'Unknown') continue; 
+            const compareVal = metric === 'count' ? obj.count : obj.amt;
+            if (compareVal > maxVal) { 
+               maxVal = compareVal; 
+               maxKey = key; 
+               assocCount = obj.count; 
+            }
+          }
+          if (maxKey === 'N/A' && groups['Unknown']) {
+             maxKey = 'Unknown'; 
+             maxVal = metric === 'count' ? groups['Unknown'].count : groups['Unknown'].amt;
+             assocCount = groups['Unknown'].count;
+          }
+          return { name: maxKey, val: Math.max(0, maxVal), count: assocCount, market: market };
+        });
+      }
+
+      // 3. Top Category ($)
+      const topCats = getWinners(closedData, 'category', 'amount');
+      chartData['barChartCategory'] = { winnerData: topCats, type: 'amount', filterField: 'category', sourceData: closedData };
+      renderSpecificChart('barChartCategory', topCats, 'amount', 'category', closedData);
+
+      // 4. Top Subcategory ($)
+      const topSub = getWinners(closedData, 'subcategory', 'amount');
+      chartData['barChartSubcategory'] = { winnerData: topSub, type: 'amount', filterField: 'subcategory', sourceData: closedData };
+      renderSpecificChart('barChartSubcategory', topSub, 'amount', 'subcategory', closedData);
+
+      // 5. Top Property ($)
+      const topPropAmt = getWinners(closedData, 'propertyId', 'amount');
+      chartData['barChartPropertyAmt'] = { winnerData: topPropAmt, type: 'amount', filterField: 'propertyId', sourceData: closedData };
+      renderSpecificChart('barChartPropertyAmt', topPropAmt, 'amount', 'propertyId', closedData);
+
+      // 6. Most Repeated Property (Count) - EXCLUDES DUPLICATES
+      const rollingNonDuplicate = rollingData.filter(d => d.status.toLowerCase() !== 'duplicate');
+      
+      const topPropCount = getWinners(rollingNonDuplicate, 'propertyId', 'count');
+      chartData['barChartPropertyCount'] = { winnerData: topPropCount, type: 'count', filterField: 'propertyId', sourceData: rollingNonDuplicate };
+      renderSpecificChart('barChartPropertyCount', topPropCount, 'count', 'propertyId', rollingNonDuplicate);
+
+      // 7. Missing Categories
+      const closedOrMultipleData = monthlyData.filter(d => 
+        d.status.toLowerCase().includes('closed') || d.status.toLowerCase().includes('multiple')
+      );
+      
+      const missingCountsByMarket = markets.map(m => {
+        return closedOrMultipleData.filter(d => d.country === m && (!d.category || d.category.trim() === '')).length;
+      });
+
+      createChart('pieChartMissing', 'pie', {
+        labels: markets,
+        datasets: [{
+          data: missingCountsByMarket,
+          backgroundColor: marketColors,
+          borderColor: '#FFFFFF',
+          borderWidth: 2
+        }]
+      }, {
+        ...commonOptions,
+        scales: { x: {display:false}, y: {display:false} },
+        plugins: { 
+          legend: { position: 'right', labels: { color: '#444' } },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.raw;
+                return `${context.label}: ${val} Missing`;
+              }
+            }
+          }
+        },
+        onClick: (e, elements) => {
+          if(elements.length > 0) {
+            const idx = elements[0].index;
+            const market = markets[idx];
+            const details = closedOrMultipleData.filter(d => 
+               d.country === market && (!d.category || d.category.trim() === '')
+            );
+            openModal(`Missing Categories - ${market}`, 'Tickets with missing categories', details);
+          }
+        },
+        onHover: (event, chartElement) => {
+            event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+        }
+      });
+    }
+
+    function createBarChart(canvasId, winnerData, type, filterField, sourceData, displayLabels) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+
+      const labels = displayLabels || markets;
+      const isSingleMarket = chartFilters[canvasId] !== 'All';
+      const singleMarketColors = [marketColors[1], marketColors[0], marketColors[4], marketColors[2], marketColors[3], marketColors[5]]; 
+
+      chartInstances[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: winnerData.map(w => w.val),
+            backgroundColor: isSingleMarket ? singleMarketColors.slice(0, winnerData.length) : marketColors,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: function(context) {
+                   const idx = context[0].dataIndex;
+                   const item = winnerData[idx];
+                   return `${item.market} (Tickets: ${item.count})`;
+                },
+                label: function(context) {
+                  const idx = context.dataIndex;
+                  const item = winnerData[idx];
+                  const mkt = item.market;
+                  
+                  let valDisplay = item.val;
+                  if (type === 'count') {
+                     valDisplay = item.val + ' Refunds';
+                  } else {
+                     const curr = getCurrency(mkt);
+                     valDisplay = curr === ' AED' ? 
+                        item.val.toLocaleString() + ' AED' : 
+                        curr + item.val.toLocaleString();
+                  }
+                  return `${item.name}: ${valDisplay}`;
+                }
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const idx = elements[0].index;
+              const item = winnerData[idx];
+              if (item.name === 'N/A') return;
+              const details = sourceData.filter(d => {
+                 const valToCheck = d[filterField] || 'Unknown';
+                 return d.country === item.market && valToCheck === item.name;
+              });
+              const title = `Details for ${item.market}`;
+              const subtitle = `Filter: ${filterField} = "${item.name}"`;
+              openModal(title, subtitle, details);
+            }
+          },
+          onHover: (event, chartElement) => {
+            event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+          },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#F0F0F0' }, ticks: { color: '#666' } },
+            x: { grid: { display: false }, ticks: { color: '#444', font: { weight: 'bold' } } }
+          }
+        }
+      });
+    }
+
+    function createChart(id, type, data, options) {
+      if (chartInstances[id]) chartInstances[id].destroy();
+      const ctx = document.getElementById(id).getContext('2d');
+      chartInstances[id] = new Chart(ctx, { type, data, options });
+    }
+  </script>
+</body>
+</html>
