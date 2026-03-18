@@ -77,7 +77,7 @@
     /* Heatmap Table Styles */
     .heatmap-table { width: 100%; border-collapse: collapse; text-align: center; }
     .heatmap-table th { background: #F9FAFB; border: 1px solid #DBDFEC; padding: 10px; font-size: 12px; color: #8BA8E3; font-weight: 600; }
-    .heatmap-table td { border: 1px solid #DBDFEC; padding: 12px; font-size: 14px; font-weight: 600; transition: opacity 0.2s; }
+    .heatmap-table td { border: 1px solid #DBDFEC; padding: 12px; font-size: 14px; transition: opacity 0.2s; }
     .heatmap-table td:hover { opacity: 0.8; cursor: crosshair; }
 
     #dataModal { transition: opacity 0.3s ease; }
@@ -131,9 +131,20 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
     <div class="glass-panel lg:col-span-2 overflow-x-auto">
-      <h3 class="text-lg font-semibold mb-2">Refund Rate Over Time (% of Reservations)</h3>
-      <p class="text-xs opacity-70 mb-4 text-gray-400">Excludes 'Duplicate' tickets. The darker the red, the higher the percentage of valid refund tickets against total monthly reservations.</p>
-      <div id="heatmapContainer">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-4">
+        <div>
+          <h3 class="text-lg font-semibold mb-2">Refund Rate Over Time (% of Reservations)</h3>
+          <p class="text-xs opacity-70 mb-0 text-gray-400">Excludes 'Duplicate' tickets. <br/> 🟢 Low: 0-3% | 🟡 Medium: 3-5% | 🔴 High: >5%</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="font-semibold text-sm text-gray-600">Filter Year:</label>
+          <select id="heatmapYearFilter" class="glass-select py-1 px-3 text-sm" onchange="renderHeatmapTable()">
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </div>
+      </div>
+      <div id="heatmapContainer" class="mt-4">
          <span class="text-gray-400 text-sm">Loading table data...</span>
       </div>
     </div>
@@ -293,7 +304,6 @@
     let chartData = {};
     let currentModalData = [];
 
-    // Fetches both datasets before rendering to prevent UI glitches
     window.onload = function() {
       google.script.run
         .withSuccessHandler(function(trackerPayload) {
@@ -309,7 +319,6 @@
     };
 
     function onAllDataLoaded(trackerPayload, resasPayload) {
-      // 1. Process Tracker Data
       const headers = trackerPayload.headers;
       const findIdx = (names, exclude = []) => {
          const lowerHeaders = headers.map(h => h.toLowerCase().trim());
@@ -357,7 +366,6 @@
         };
       }).filter(d => d.date);
 
-      // 2. Process Reservations Data
       if (resasPayload) {
         const rHeaders = resasPayload.headers;
         const cIdx = rHeaders.indexOf('Country') !== -1 ? rHeaders.indexOf('Country') : 0;
@@ -366,7 +374,6 @@
 
         reservationsData = resasPayload.rows.map(row => {
           let c = row[cIdx] ? row[cIdx].trim() : '';
-          // Normalize names to match Tracker data
           if (c.toLowerCase().includes('united arab emirates')) c = 'Dubai';
           if (c.toLowerCase().includes('united kingdom')) c = 'UK';
           
@@ -439,7 +446,6 @@
       return amount * getExchangeRate(market);
     }
 
-    // --- MODAL & EXPORT LOGIC ---
     function openModal(title, subtitle, dataRows) {
       currentModalData = dataRows;
       document.getElementById('modalTitle').innerText = title;
@@ -452,12 +458,12 @@
         tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center opacity-50">No matching records found.</td></tr>`;
       } else {
         dataRows.forEach(row => {
-          const tr = document.createElement('tr');
           const currency = getCurrency(row.country);
           const amtStr = currency === ' AED' ? row.amount.toFixed(2) + currency : currency + row.amount.toFixed(2);
           
           const statusClass = row.status.toLowerCase().includes('closed') ? 'pill-closed' : 'pill-open';
           
+          const tr = document.createElement('tr');
           tr.innerHTML = `
             <td class="p-4 whitespace-nowrap">${row.dateDisplay}</td>
             <td class="p-4 font-mono text-xs bg-gray-50 rounded text-gray-600">${row.ticketId || '-'}</td>
@@ -581,7 +587,6 @@
       createBarChart(chartId, displayData, type, filterField, sourceData, displayLabels);
     }
 
-    // --- Main Rendering ---
     function renderDashboard() {
       const selectedMonth = document.getElementById('monthFilter').value;
       let monthlyData;
@@ -601,15 +606,19 @@
       
       renderCards(monthlyData);
       renderCharts(monthlyData, rollingData);
-      renderHeatmapTable(); // Render our new custom table!
+      renderHeatmapTable(); 
     }
 
-    // NEW: Function to render the HTML Table Heatmap
+    // UPDATED Heatmap Function
     function renderHeatmapTable() {
       const container = document.getElementById('heatmapContainer');
       if (!container) return;
 
-      // Find all unique months available chronologically to use as X-axis
+      // Get user selected year
+      const yearSelect = document.getElementById('heatmapYearFilter');
+      const selectedYear = yearSelect ? yearSelect.value : '2025';
+
+      // Find all unique months available chronologically
       const allMonths = [...new Set([
         ...rawData.map(d => d.monthStr), 
         ...reservationsData.map(d => d.monthStr)
@@ -617,13 +626,14 @@
       
       allMonths.sort((a, b) => new Date(a) - new Date(b));
 
-      let matrixData = {};
-      let maxPct = 0.01; // Avoid divide by zero
+      // Filter to only include months that match the selected year (e.g., "Jan 2025")
+      const filteredMonths = allMonths.filter(m => m.endsWith(selectedYear));
 
-      // Calculate tickets and reservations matching
+      let matrixData = {};
+
       markets.forEach(market => {
         matrixData[market] = {};
-        allMonths.forEach(month => {
+        filteredMonths.forEach(month => {
           // Count tickets: Matching market, month, ignoring "Duplicate"
           const tickets = rawData.filter(d => 
             d.country === market && 
@@ -639,7 +649,6 @@
 
           let pct = 0;
           if (resas > 0) pct = (tickets / resas) * 100;
-          if (pct > maxPct) maxPct = pct;
 
           matrixData[market][month] = { pct, tickets, resas };
         });
@@ -650,34 +659,57 @@
       
       // Header Row
       html += '<thead><tr><th style="text-align:left;">MARKET</th>';
-      allMonths.forEach(month => {
-        html += `<th>${month}</th>`;
-      });
+      if (filteredMonths.length === 0) {
+         html += `<th>No Data available for ${selectedYear}</th>`;
+      } else {
+         filteredMonths.forEach(month => {
+            html += `<th>${month.split(' ')[0]}</th>`; // Shows just the month string
+         });
+      }
       html += '</tr></thead><tbody>';
 
       // Rows for each Market
-      markets.forEach(market => {
-        html += `<tr><td style="text-align:left; font-weight:bold; color:#444;">${market}</td>`;
-        
-        allMonths.forEach(month => {
-          const cell = matrixData[market][month];
+      if (filteredMonths.length === 0) {
+        html += `<tr><td colspan="2" class="text-center text-gray-400 py-4">No data logged yet for this year.</td></tr>`;
+      } else {
+        markets.forEach(market => {
+          html += `<tr><td style="text-align:left; font-weight:bold; color:#444;">${market}</td>`;
           
-          // Calculate Red Intensity
-          // Use an rgba base so it naturally forms a gradient. 'rgba(239, 83, 80, X)' is a nice UI red.
-          let alpha = maxPct > 0 ? (cell.pct / maxPct) : 0;
-          let finalAlpha = cell.pct > 0 ? Math.max(0.1, alpha) : 0; 
+          filteredMonths.forEach(month => {
+            const cell = matrixData[market][month];
+            
+            // Setup defaults (N/A)
+            let bgColor = '#FAFAFA';
+            let textColor = '#444444';
+            let text = 'N/A';
+
+            if (cell.resas > 0) {
+              // Apply requested color logic
+              if (cell.pct <= 3.0) {
+                bgColor = '#22c55e'; // Green
+                textColor = '#FFFFFF';
+              } else if (cell.pct <= 5.0) {
+                bgColor = '#facc15'; // Yellow
+                textColor = '#000000'; // Black text on yellow for readability
+              } else {
+                bgColor = '#ef4444'; // Red
+                textColor = '#FFFFFF';
+              }
+
+              // Create formatted HTML for percentage and subhead fraction
+              text = `
+                <div style="font-size: 15px; font-weight: bold;">${cell.pct.toFixed(2)}%</div>
+                <div style="font-size: 11px; opacity: 0.9; margin-top: 2px;">${cell.tickets} / ${cell.resas}</div>
+              `;
+            }
+
+            let tooltip = `Tickets: ${cell.tickets}\nReservations: ${cell.resas}`;
+            html += `<td style="background-color: ${bgColor}; color: ${textColor}; padding: 10px 8px; vertical-align: middle;" title="${tooltip}">${text}</td>`;
+          });
           
-          let bgColor = cell.pct > 0 ? `rgba(239, 83, 80, ${finalAlpha})` : '#FAFAFA';
-          let textColor = finalAlpha > 0.5 ? '#FFFFFF' : '#444444'; // Make text white if red is dark
-
-          let tooltip = `Tickets: ${cell.tickets}\nReservations: ${cell.resas}`;
-          let text = cell.resas > 0 ? cell.pct.toFixed(2) + '%' : 'N/A';
-
-          html += `<td style="background-color: ${bgColor}; color: ${textColor};" title="${tooltip}">${text}</td>`;
+          html += '</tr>';
         });
-        
-        html += '</tr>';
-      });
+      }
 
       html += '</tbody></table>';
       container.innerHTML = html;
