@@ -118,11 +118,19 @@
       <h1 class="text-3xl font-bold tracking-wide">Global Refund Tracker</h1>
       <p class="text-sm opacity-60 mt-1 text-gray-500">Analytics Dashboard</p>
     </div>
-    <div class="mt-4 md:mt-0 flex items-center gap-4">
-      <label class="font-semibold text-gray-600">Select Month:</label>
-      <select id="monthFilter" class="glass-select" onchange="renderDashboard()">
-        <option value="All">Loading...</option>
-      </select>
+    <div class="mt-4 md:mt-0 flex flex-col sm:flex-row items-center gap-4">
+      <div class="flex items-center gap-2">
+        <label class="font-semibold text-gray-600">Year:</label>
+        <select id="yearFilter" class="glass-select" onchange="updateMonthDropdown(); renderDashboard()">
+          <option value="All">Loading...</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="font-semibold text-gray-600">Month:</label>
+        <select id="monthFilter" class="glass-select" onchange="renderDashboard()">
+          <option value="All">Loading...</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -345,6 +353,8 @@
         subcategory: findIdx(['refund subcategory', 'subcategory'])
       };
 
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
       rawData = trackerPayload.rows.map(row => {
         const dateStr = row[idx.date];
         const dateObj = parseDate(dateStr);
@@ -354,6 +364,8 @@
         return {
           date: dateObj,
           monthStr: dateObj ? getMonthYearStr(dateObj) : 'Unknown',
+          yearStr: dateObj ? dateObj.getFullYear().toString() : 'Unknown',
+          monthOnlyStr: dateObj ? monthNames[dateObj.getMonth()] : 'Unknown',
           dateDisplay: dateObj ? dateObj.toLocaleDateString() : dateStr,
           country: normalizeCountry(row[idx.country]),
           amount: parseFloat(row[idx.amount] || 0),
@@ -385,7 +397,7 @@
         });
       }
 
-      populateMonthFilter();
+      populateFilters();
       renderDashboard();
     }
 
@@ -407,25 +419,66 @@
       return c.trim();
     }
 
-    function populateMonthFilter() {
-      const select = document.getElementById('monthFilter');
-      const uniqueMonths = [...new Set(rawData.map(d => d.monthStr))];
-      uniqueMonths.sort((a, b) => new Date(b) - new Date(a));
+    function populateFilters() {
+      const yearSelect = document.getElementById('yearFilter');
+      const uniqueYears = [...new Set(rawData.map(d => d.yearStr))].filter(y => y !== 'Unknown');
+      uniqueYears.sort((a, b) => b - a); // Descending order
       
-      select.innerHTML = '';
+      yearSelect.innerHTML = '';
+      
+      const allYearOpt = document.createElement('option');
+      allYearOpt.value = 'All';
+      allYearOpt.innerText = 'All Years';
+      yearSelect.appendChild(allYearOpt);
+      
+      uniqueYears.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.innerText = y;
+        yearSelect.appendChild(opt);
+      });
+
+      if (uniqueYears.length > 0) {
+          yearSelect.value = uniqueYears[0]; // Default to most recent year
+      }
+      
+      updateMonthDropdown();
+    }
+
+    function updateMonthDropdown() {
+      const selectedYear = document.getElementById('yearFilter').value;
+      const monthSelect = document.getElementById('monthFilter');
+      const currentMonthSelection = monthSelect.value;
+      
+      let filteredData = rawData;
+      if (selectedYear !== 'All') {
+          filteredData = rawData.filter(d => d.yearStr === selectedYear);
+      }
+      
+      const uniqueMonths = [...new Set(filteredData.map(d => d.monthOnlyStr))].filter(m => m !== 'Unknown');
+      
+      const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      uniqueMonths.sort((a, b) => monthOrder.indexOf(b) - monthOrder.indexOf(a)); // Descending order
+      
+      monthSelect.innerHTML = '';
       
       const allOpt = document.createElement('option');
       allOpt.value = 'All';
       allOpt.innerText = 'All Months';
-      select.appendChild(allOpt);
+      monthSelect.appendChild(allOpt);
       
       uniqueMonths.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m;
         opt.innerText = m;
-        select.appendChild(opt);
+        monthSelect.appendChild(opt);
       });
-      if (uniqueMonths.length > 0) select.value = uniqueMonths[0];
+
+      if (uniqueMonths.includes(currentMonthSelection)) {
+          monthSelect.value = currentMonthSelection;
+      } else {
+          monthSelect.value = 'All'; // Default to All if previous selection is unavailable
+      }
     }
 
     function getCurrency(market) {
@@ -489,12 +542,22 @@
     }
 
     function openKeyCardModal(market) {
-      const monthFilter = document.getElementById('monthFilter').value;
-      const data = rawData.filter(d => 
-        d.country === market && 
-        (monthFilter === 'All' || d.monthStr === monthFilter)
-      );
-      openModal(`${market} Refunds`, `Tickets for ${monthFilter === 'All' ? 'All Months' : monthFilter}`, data);
+      const selectedYear = document.getElementById('yearFilter').value;
+      const selectedMonth = document.getElementById('monthFilter').value;
+      
+      const data = rawData.filter(d => {
+         const matchMarket = d.country === market;
+         const matchYear = selectedYear === 'All' ? true : d.yearStr === selectedYear;
+         const matchMonth = selectedMonth === 'All' ? true : d.monthOnlyStr === selectedMonth;
+         return matchMarket && matchYear && matchMonth;
+      });
+      
+      let titleSuffix = selectedYear === 'All' ? 'All Time' : selectedYear;
+      if (selectedMonth !== 'All') {
+          titleSuffix = `${selectedMonth} ${selectedYear === 'All' ? '' : selectedYear}`.trim();
+      }
+
+      openModal(`${market} Refunds`, `Tickets for ${titleSuffix}`, data);
     }
 
     function downloadCSV() {
@@ -588,19 +651,28 @@
     }
 
     function renderDashboard() {
+      const selectedYear = document.getElementById('yearFilter').value;
       const selectedMonth = document.getElementById('monthFilter').value;
-      let monthlyData;
-      let rollingData;
       
-      if (selectedMonth === 'All') {
-        monthlyData = rawData;
-        rollingData = rawData;
-      } else {
-        monthlyData = rawData.filter(d => d.monthStr === selectedMonth);
-        const selDate = new Date(selectedMonth);
+      // Filter for standard charts based on both dropdowns
+      let monthlyData = rawData.filter(d => {
+         const matchYear = selectedYear === 'All' ? true : d.yearStr === selectedYear;
+         const matchMonth = selectedMonth === 'All' ? true : d.monthOnlyStr === selectedMonth;
+         return matchYear && matchMonth;
+      });
+
+      let rollingData = monthlyData; // Fallback 
+      
+      // Rolling Logic: if a specific month AND year are chosen, generate rolling data window
+      if (selectedMonth !== 'All' && selectedYear !== 'All') {
+        const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthIdx = monthOrder.indexOf(selectedMonth);
+        const selDate = new Date(parseInt(selectedYear), monthIdx, 1);
+        
         const startWindow = new Date(selDate);
         startWindow.setMonth(startWindow.getMonth() - 2); 
         const endDate = new Date(selDate.getFullYear(), selDate.getMonth() + 1, 0);
+        
         rollingData = rawData.filter(d => d.date >= new Date(startWindow.getFullYear(), startWindow.getMonth(), 1) && d.date <= endDate);
       }
       
@@ -609,7 +681,6 @@
       renderHeatmapTable(); 
     }
 
-    // UPDATED Heatmap Function with new hex codes
     function renderHeatmapTable() {
       const container = document.getElementById('heatmapContainer');
       if (!container) return;
@@ -675,16 +746,15 @@
             let text = 'N/A';
 
             if (cell.resas > 0) {
-              // Applied your new custom color logic here
               if (cell.pct <= 3.0) {
-                bgColor = '#94C9A1'; // Green
-                textColor = '#444444'; // Darker text for readability on lighter green
+                bgColor = '#94C9A1'; 
+                textColor = '#444444'; 
               } else if (cell.pct <= 5.0) {
-                bgColor = '#F4D35E'; // Yellow
+                bgColor = '#F4D35E'; 
                 textColor = '#444444'; 
               } else {
-                bgColor = '#E59881'; // Red
-                textColor = '#FFFFFF'; // Kept white for contrast against the red
+                bgColor = '#E59881'; 
+                textColor = '#FFFFFF'; 
               }
 
               text = `
