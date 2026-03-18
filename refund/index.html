@@ -609,16 +609,14 @@
       renderHeatmapTable(); 
     }
 
-    // UPDATED Heatmap Function
+    // UPDATED Heatmap Function with new hex codes
     function renderHeatmapTable() {
       const container = document.getElementById('heatmapContainer');
       if (!container) return;
 
-      // Get user selected year
       const yearSelect = document.getElementById('heatmapYearFilter');
       const selectedYear = yearSelect ? yearSelect.value : '2025';
 
-      // Find all unique months available chronologically
       const allMonths = [...new Set([
         ...rawData.map(d => d.monthStr), 
         ...reservationsData.map(d => d.monthStr)
@@ -626,7 +624,6 @@
       
       allMonths.sort((a, b) => new Date(a) - new Date(b));
 
-      // Filter to only include months that match the selected year (e.g., "Jan 2025")
       const filteredMonths = allMonths.filter(m => m.endsWith(selectedYear));
 
       let matrixData = {};
@@ -634,14 +631,12 @@
       markets.forEach(market => {
         matrixData[market] = {};
         filteredMonths.forEach(month => {
-          // Count tickets: Matching market, month, ignoring "Duplicate"
           const tickets = rawData.filter(d => 
             d.country === market && 
             d.monthStr === month && 
             d.status.toLowerCase() !== 'duplicate'
           ).length;
 
-          // Sum reservations
           const resas = reservationsData.filter(d => 
             d.country === market && 
             d.monthStr === month
@@ -654,21 +649,18 @@
         });
       });
 
-      // Build the table HTML
       let html = '<table class="heatmap-table">';
       
-      // Header Row
       html += '<thead><tr><th style="text-align:left;">MARKET</th>';
       if (filteredMonths.length === 0) {
          html += `<th>No Data available for ${selectedYear}</th>`;
       } else {
          filteredMonths.forEach(month => {
-            html += `<th>${month.split(' ')[0]}</th>`; // Shows just the month string
+            html += `<th>${month.split(' ')[0]}</th>`; 
          });
       }
       html += '</tr></thead><tbody>';
 
-      // Rows for each Market
       if (filteredMonths.length === 0) {
         html += `<tr><td colspan="2" class="text-center text-gray-400 py-4">No data logged yet for this year.</td></tr>`;
       } else {
@@ -678,25 +670,23 @@
           filteredMonths.forEach(month => {
             const cell = matrixData[market][month];
             
-            // Setup defaults (N/A)
             let bgColor = '#FAFAFA';
             let textColor = '#444444';
             let text = 'N/A';
 
             if (cell.resas > 0) {
-              // Apply requested color logic
+              // Applied your new custom color logic here
               if (cell.pct <= 3.0) {
-                bgColor = '#22c55e'; // Green
-                textColor = '#FFFFFF';
+                bgColor = '#94C9A1'; // Green
+                textColor = '#444444'; // Darker text for readability on lighter green
               } else if (cell.pct <= 5.0) {
-                bgColor = '#facc15'; // Yellow
-                textColor = '#000000'; // Black text on yellow for readability
+                bgColor = '#F4D35E'; // Yellow
+                textColor = '#444444'; 
               } else {
-                bgColor = '#ef4444'; // Red
-                textColor = '#FFFFFF';
+                bgColor = '#E59881'; // Red
+                textColor = '#FFFFFF'; // Kept white for contrast against the red
               }
 
-              // Create formatted HTML for percentage and subhead fraction
               text = `
                 <div style="font-size: 15px; font-weight: bold;">${cell.pct.toFixed(2)}%</div>
                 <div style="font-size: 11px; opacity: 0.9; margin-top: 2px;">${cell.tickets} / ${cell.resas}</div>
