@@ -144,13 +144,6 @@
           <h3 class="text-lg font-semibold mb-2">Refund Rate Over Time (% of Reservations)</h3>
           <p class="text-xs opacity-70 mb-0 text-gray-400">Excludes 'Duplicate' tickets. <br/> 🟢 Low: 0-3% | 🟡 Medium: 3-5% | 🔴 High: >5%</p>
         </div>
-        <div class="flex items-center gap-2">
-          <label class="font-semibold text-sm text-gray-600">Filter Year:</label>
-          <select id="heatmapYearFilter" class="glass-select py-1 px-3 text-sm" onchange="renderHeatmapTable()">
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-          </select>
-        </div>
       </div>
       <div id="heatmapContainer" class="mt-4">
          <span class="text-gray-400 text-sm">Loading table data...</span>
@@ -685,8 +678,8 @@
       const container = document.getElementById('heatmapContainer');
       if (!container) return;
 
-      const yearSelect = document.getElementById('heatmapYearFilter');
-      const selectedYear = yearSelect ? yearSelect.value : '2025';
+      const mainYearSelect = document.getElementById('yearFilter');
+      const selectedYear = mainYearSelect ? mainYearSelect.value : '2025';
 
       const allMonths = [...new Set([
         ...rawData.map(d => d.monthStr), 
@@ -695,7 +688,8 @@
       
       allMonths.sort((a, b) => new Date(a) - new Date(b));
 
-      const filteredMonths = allMonths.filter(m => m.endsWith(selectedYear));
+      // Filter months exclusively by the main Year dropdown. Ignores the main Month dropdown entirely.
+      const filteredMonths = selectedYear === 'All' ? allMonths : allMonths.filter(m => m.endsWith(selectedYear));
 
       let matrixData = {};
 
