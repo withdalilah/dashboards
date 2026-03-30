@@ -83,7 +83,7 @@
         a.case-link { color: var(--primary-bg); text-decoration: none; font-weight: bold; }
         a.case-link:hover { text-decoration: underline; color: var(--highlight-chart); }
 
-        .reset-btn { background: none; border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: 500; display: flex; align-items: center; gap: 6px; color: #666; background-color: white; }
+        .reset-btn { background: none; border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: 500; display: flex; align-items: center; gap: 6px; color: #666; background-color: white; transition: 0.2s;}
         .reset-btn:hover { background-color: var(--body-bg); color: var(--primary-bg); border-color: var(--primary-bg); }
 
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } .span-2 { grid-column: span 2; } }
@@ -149,7 +149,12 @@
                 <div class="chart-card span-1"><div id="chartStatus"></div></div>
                 <div class="chart-card span-1"><div id="chartCategory"></div></div>
                 <div class="chart-card span-1"><div id="chartSource"></div></div>
-                <div class="chart-card span-1"><div id="chartRepeatedProps"></div></div>
+                <div class="chart-card span-1">
+                    <div id="chartRepeatedProps"></div>
+                    <p style="font-size: 0.75em; color: #888; margin-top: -5px; text-align: center; font-style: italic;">
+                        Note: a count of 1 may indicate spam reviews.
+                    </p>
+                </div>
                 <div class="chart-card span-3" style="grid-column: span 3;"><div id="chartHeatmap"></div></div>
             </div>
         </div>
@@ -190,7 +195,10 @@
                 </span>
                 <small id="list-count" style="color:#888;"></small>
             </div>
-            <div style="display:flex; gap:10px;">
+            <div style="display:flex; gap:10px; align-items: center;">
+                 <button onclick="downloadCSV()" class="reset-btn" style="padding: 6px 12px; font-size: 0.85em; color: var(--primary-bg); border-color: var(--primary-bg);">
+                     <i class="fa-solid fa-download"></i> CSV
+                 </button>
                  <button onclick="toggleDrawer()" style="background:none; border:none; font-size:1.2em; cursor:pointer; color:#666;"><i class="fa-solid fa-chevron-down"></i></button>
             </div>
         </div>
@@ -225,6 +233,57 @@
     document.addEventListener('DOMContentLoaded', function() {
         google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData("All", "All");
     });
+
+    // --- CSV Download Function ---
+    function downloadCSV() {
+        // Get the data currently shown in the table based on active filters
+        const dataToDownload = currentFilter ? filterData(fullTableData, currentFilter) : fullTableData;
+        
+        if (dataToDownload.length === 0) {
+            alert("No data available to download.");
+            return;
+        }
+
+        // CSV Headers
+        const headers = ['Case ID', 'Market', 'Reservation ID', 'Category', 'Status', 'Property ID', 'Source', 'Summary'];
+        
+        const csvRows = [];
+        csvRows.push(headers.join(','));
+
+        // Process data
+        for (const row of dataToDownload) {
+            const values = [
+                row.id || '',
+                row.market || '',
+                row.displayReservationId || row.reservationId || '',
+                row.category || '',
+                row.status || '',
+                row.propertyId || '',
+                row.source || '',
+                row.summary || ''
+            ];
+            
+            // Format for CSV - escaping double quotes and wrapping text in quotes to handle newlines/commas
+            const escapedValues = values.map(v => {
+                const str = String(v).replace(/"/g, '""'); 
+                return `"${str}"`; 
+            });
+            csvRows.push(escapedValues.join(','));
+        }
+
+        // Build file and trigger download securely
+        const csvString = csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "Operations_Case_List_Export.csv");
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 
     // --- Sidebar & Navigation Functions ---
     function toggleSidebar() {
@@ -404,7 +463,6 @@
         alert(`Dashboard Error: ${error.message || 'The script failed to connect. This is often caused by an adblocker or extension.'}`);
     }
 
-    // ... (rest of functions remain exactly the same) ...
     function renderDashboard(data) {
         if (data.error) { showError({message: data.error}); return; }
         
