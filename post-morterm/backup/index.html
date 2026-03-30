@@ -234,6 +234,7 @@
         google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData("All", "All");
     });
 
+    // --- UPDATED CSV EXPORT FUNCTION ---
     function downloadCSV() {
         const dataToDownload = currentFilter ? filterData(fullTableData, currentFilter) : fullTableData;
         
@@ -242,22 +243,40 @@
             return;
         }
 
-        const headers = ['Case ID', 'Market', 'Reservation ID', 'Category', 'Status', 'Property ID', 'Source', 'Summary'];
+        // Expanded Headers matching your primary sheet
+        const headers = [
+            'Case ID', 'Market', 'Sources', 'Affected Party', 'Reservation ID', 
+            'Property ID', 'Review Date', 'Summary', 'Category', 'Subcategory', 
+            'Flagged?', 'Removed?', 'Duplicate Reviews', 'Refunded?', 
+            'Next action/Note', 'Status', 'PM Ticket'
+        ];
+        
         const csvRows = [];
         csvRows.push(headers.join(','));
 
         for (const row of dataToDownload) {
+            // Map the new values received from the backend
             const values = [
                 row.id || '',
                 row.market || '',
-                row.displayReservationId || row.reservationId || '',
-                row.category || '',
-                row.status || '',
-                row.propertyId || '',
                 row.source || '',
-                row.summary || ''
+                row.affectedParty || '',
+                row.displayReservationId || row.reservationId || '',
+                row.propertyId || '',
+                row.reviewDate || '',
+                row.summary || '',
+                row.category || '',
+                row.subcategory || '',
+                row.flagged || '',
+                row.removedRaw || '', // Keep the exact value from the sheet
+                row.duplicateReviews || '',
+                row.refunded || '',
+                row.nextAction || '',
+                row.status || '',
+                row.pmTicket || ''
             ];
             
+            // Format for CSV strictly
             const escapedValues = values.map(v => {
                 const str = String(v).replace(/"/g, '""'); 
                 return `"${str}"`; 
@@ -277,6 +296,7 @@
         link.click();
         document.body.removeChild(link);
     }
+    // ------------------------------------
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('collapsed');
@@ -489,15 +509,12 @@
         renderTable(fullTableData);
     }
 
-    // --- UPDATED HANDLECARDCLICK FUNCTION ---
     function handleCardClick(type) {
         selectedRowId = null;
         document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row'));
 
         if (type === 'total') {
-            // When clicking Total Cases, clear sub-filters but KEEP global dropdown filters
             currentFilter = null;
-            // Reset chart colors to default
             chartCategory.updateOptions({ colors: [COLORS.SINGLE_BAR] });
             chartStatus.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
             chartSource.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
@@ -520,7 +537,6 @@
         const drawer = document.getElementById('case-drawer');
         if (!drawer.classList.contains('open')) toggleDrawer();
     }
-    // ------------------------------------------
 
     function handleChartClick(chartType, selectedValue) {
       if (selectedRowId) { selectedRowId = null; document.querySelectorAll('tr.active-row').forEach(r => r.classList.remove('active-row')); }
