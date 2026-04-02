@@ -138,7 +138,7 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-    <div class="glass-panel lg:col-span-2 overflow-x-auto">
+    <div class="glass-panel overflow-x-auto">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-4">
         <div>
           <h3 class="text-lg font-semibold mb-2">Refund Rate Over Time (% of Reservations)</h3>
@@ -148,6 +148,23 @@
       <div id="heatmapContainer" class="mt-4">
          <span class="text-gray-400 text-sm">Loading table data...</span>
       </div>
+    </div>
+
+    <div class="glass-panel transition-colors">
+      <div class="flex justify-between items-start">
+        <h3 class="text-lg font-semibold mb-4">Highest Refund per (RP + CF) %</h3>
+        <div class="flex gap-2 text-[9px]">
+          <button onclick="setRatioChartFilter('All')" class="market-filter ratio-filter-All active">All</button>
+          <button onclick="setRatioChartFilter('Portugal')" class="market-filter ratio-filter-Portugal">PT</button>
+          <button onclick="setRatioChartFilter('France')" class="market-filter ratio-filter-France">FR</button>
+          <button onclick="setRatioChartFilter('UK')" class="market-filter ratio-filter-UK">UK</button>
+          <button onclick="setRatioChartFilter('Ireland')" class="market-filter ratio-filter-Ireland">IE</button>
+          <button onclick="setRatioChartFilter('Dubai')" class="market-filter ratio-filter-Dubai">AE</button>
+          <button onclick="setRatioChartFilter('Spain')" class="market-filter ratio-filter-Spain">ES</button>
+        </div>
+      </div>
+      <p class="text-xs opacity-70 mb-2 text-gray-400">Ratio of Total Refund Amount to RP+CF (Top 6 Properties). Based on <b>Closed</b> tickets.</p>
+      <canvas id="barChartRatio"></canvas>
     </div>
 
     <div class="glass-panel">
@@ -305,6 +322,10 @@
     let chartData = {};
     let currentModalData = [];
 
+    // Ratio Chart Variables
+    let ratioChartFilter = 'All';
+    let ratioChartDataStore = [];
+
     window.onload = function() {
       google.script.run
         .withSuccessHandler(function(trackerPayload) {
@@ -338,6 +359,7 @@
         date: findIdx(['refund requested at', 'date']),
         country: findIdx(['country', 'market']),
         amount: findIdx(['amount', 'value']),
+        rpCf: findIdx(['rp + cf', 'rental price']), // Added Index for RP + CF
         ticketId: findIdx(['ticket id', 'ticket']),
         propertyId: findIdx(['property id', 'property']),
         status: findIdx(['status']),
@@ -362,6 +384,7 @@
           dateDisplay: dateObj ? dateObj.toLocaleDateString() : dateStr,
           country: normalizeCountry(row[idx.country]),
           amount: parseFloat(row[idx.amount] || 0),
+          rpCf: parseFloat(String(row[idx.rpCf] || "0").replace(/,/g, '')) || 0, // Store RP + CF
           ticketId: row[idx.ticketId],
           category: row[idx.category],
           subcategory: row[idx.subcategory],
@@ -589,6 +612,121 @@
     document.getElementById('dataModal').addEventListener('click', function(e) {
       if (e.target === this) closeModal();
     });
+
+    // Custom Ratio Chart logic
+    function setRatioChartFilter(market) {
+      ratioChartFilter = market;
+      document.querySelectorAll('.ratio-filter-All, .ratio-filter-Portugal, .ratio-filter-France, .ratio-filter-UK, .ratio-filter-Ireland, .ratio-filter-Dubai, .ratio-filter-Spain').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.querySelector(`.ratio-filter-${market}`).classList.add('active');
+      renderRatioChart();
+    }
+
+    function renderRatioChart() {
+      const canvasId = 'barChartRatio';
+      if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+      const ctx = document.getElementById(canvasId).getContext('2d');
+
+      let displayLabels = [];
+      let displayData = [];
+      let bgColors = [];
+
+      if (ratioChartFilter === 'All') {
+        // Show 1 top property per market
+        markets.forEach((market, idx) => {
+          const mData = ratioChartDataStore.filter(d => d.country === market);
+          let topProp = 'N/A';
+          let maxRatio = 0;
+          
+          const groups = {};
+          mData.forEach(d => {
+            const pid = d.propertyId || 'Unknown';
+            if (!groups[pid]) groups[pid] = { amt: 0, rpCf: 0 };
+            groups[pid].amt += d.amount;
+            groups[pid].rpCf += d.rpCf;
+          });
+
+          for (const [pid, obj] of Object.entries(groups)) {
+            if (pid === 'Unknown') continue;
+            let ratio = obj.rpCf > 0 ? (obj.amt / obj.rpCf) * 100 : 0;
+            if (ratio > maxRatio) { maxRatio = ratio; topProp = pid; }
+          }
+          
+          displayLabels.push(market);
+          displayData.push({ val: maxRatio, name: topProp, market: market });
+          bgColors.push(marketColors[idx]);
+        });
+      } else {
+        // Show top 6 properties for selected market
+        const mData = ratioChartDataStore.filter(d => d.country === ratioChartFilter);
+        const groups = {};
+        mData.forEach(d => {
+          const pid = d.propertyId || 'Unknown';
+          if (!groups[pid]) groups[pid] = { amt: 0, rpCf: 0 };
+          groups[pid].amt += d.amount;
+          groups[pid].rpCf += d.rpCf;
+        });
+
+        const sorted = Object.entries(groups)
+          .filter(([pid, obj]) => pid !== 'Unknown' && obj.rpCf > 0)
+          .map(([pid, obj]) => ({
+            name: pid,
+            val: (obj.amt / obj.rpCf) * 100,
+            market: ratioChartFilter
+          }))
+          .sort((a, b) => b.val - a.val)
+          .slice(0, 6); // Limit to top 6
+
+        displayLabels = sorted.map((item, idx) => `${idx + 1}. ${item.name}`);
+        displayData = sorted;
+        const singleMarketColors = [marketColors[1], marketColors[0], marketColors[4], marketColors[2], marketColors[3], marketColors[5]];
+        bgColors = singleMarketColors.slice(0, sorted.length);
+      }
+
+      chartInstances[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: displayLabels,
+          datasets: [{
+            data: displayData.map(d => d.val),
+            backgroundColor: bgColors,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: function(context) {
+                  const item = displayData[context[0].dataIndex];
+                  return `${item.market} - Property: ${item.name}`;
+                },
+                label: function(context) {
+                  const item = displayData[context.dataIndex];
+                  return `Refund / (RP+CF): ${item.val.toFixed(2)}%`;
+                }
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const item = displayData[elements[0].index];
+              if (item.name === 'N/A') return;
+              const details = ratioChartDataStore.filter(d => d.country === item.market && (d.propertyId || 'Unknown') === item.name);
+              openModal(`Property Details: ${item.name} (${item.market})`, `Showing Closed tickets`, details);
+            }
+          },
+          onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#F0F0F0' }, ticks: { color: '#666', callback: function(value) { return value + '%'; } } },
+            x: { grid: { display: false }, ticks: { color: '#444', font: { weight: 'bold' } } }
+          }
+        }
+      });
+    }
 
     function setChartFilter(chartId, market) {
       chartFilters[chartId] = market;
@@ -854,6 +992,10 @@
       }, { ...commonOptions, plugins: { legend: { position: 'right', labels: { color: '#444' } } }, scales: { x: {display:false}, y: {display:false} } });
 
       const closedData = monthlyData.filter(d => d.status.toLowerCase().includes('closed'));
+
+      // Populate Ratio Chart Data
+      ratioChartDataStore = closedData;
+      renderRatioChart();
 
       function getWinners(dataSrc, field, metric = 'amount') {
         return markets.map(market => {
