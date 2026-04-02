@@ -21,15 +21,39 @@ function getSheetData() {
     throw new Error(`Sheet "${SHEET_NAME}" not found. Please check the tab name.`);
   }
 
-  const data = sheet.getDataRange().getDisplayValues();
+  const range = sheet.getDataRange();
+  const data = range.getDisplayValues();
+  const richText = range.getRichTextValues();
+  const formulas = range.getFormulas();
+
+  // Find the column index for "Ticket ID"
+  const ticketIdColIdx = data[0].findIndex(h => h.toLowerCase().includes('ticket id') || h.toLowerCase() === 'ticket');
+
+  const ticketLinks = [];
+  if (ticketIdColIdx !== -1) {
+    for (let i = 1; i < data.length; i++) {
+      // Try to get standard hyperlink, fallback to parsing =HYPERLINK() formula
+      let link = richText[i][ticketIdColIdx].getLinkUrl();
+      if (!link) {
+        let formula = formulas[i][ticketIdColIdx];
+        if (formula && formula.toUpperCase().includes('HYPERLINK')) {
+          let match = formula.match(/HYPERLINK\(\s*"([^"]+)"/i);
+          if (match) link = match[1];
+        }
+      }
+      ticketLinks.push(link || null);
+    }
+  }
+
   return {
     headers: data[0],
-    rows: data.slice(1)
+    rows: data.slice(1),
+    ticketLinks: ticketLinks
   };
 }
 
 /**
- * NEW: Fetches the reservations data for the Heatmap Table.
+ * Fetches the reservations data for the Heatmap Table.
  */
 function getReservationsData() {
   const SHEET_NAME = 'No.of Resas/month/country';

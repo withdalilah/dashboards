@@ -72,7 +72,6 @@
     .market-filter.active { background: #8BA8E3; color: white; border-color: #8BA8E3; }
 
     h1, h2, h3 { color: #8BA8E3; font-weight: 700; }
-    canvas { max-height: 300px; }
 
     /* Heatmap Table Styles */
     .heatmap-table { width: 100%; border-collapse: collapse; text-align: center; }
@@ -164,18 +163,21 @@
         </div>
       </div>
       <p class="text-xs opacity-70 mb-2 text-gray-400">Ratio of Total Refund Amount to RP+CF (Top 6 Properties). Based on <b>Closed</b> tickets.</p>
-      <canvas id="barChartRatio"></canvas>
+      
+      <div class="relative w-full h-96 mt-4">
+        <canvas id="barChartRatio"></canvas>
+      </div>
     </div>
 
     <div class="glass-panel">
       <h3 class="text-lg font-semibold mb-4">Ticket Volume Trend</h3>
       <p class="text-xs opacity-70 mb-2 text-gray-400">Click on any point to view details.</p>
-      <canvas id="lineChartTickets"></canvas>
+      <div class="relative w-full h-64"><canvas id="lineChartTickets"></canvas></div>
     </div>
 
     <div class="glass-panel">
       <h3 class="text-lg font-semibold mb-4">Refund Status Distribution (Ticket Count)</h3>
-      <canvas id="pieChartStatus"></canvas>
+      <div class="relative w-full h-64"><canvas id="pieChartStatus"></canvas></div>
     </div>
 
     <div class="glass-panel transition-colors">
@@ -192,7 +194,7 @@
         </div>
       </div>
       <p class="text-xs opacity-70 mb-2 text-gray-400">Based on <b>Closed</b> tickets only.</p>
-      <canvas id="barChartCategory"></canvas>
+      <div class="relative w-full h-64"><canvas id="barChartCategory"></canvas></div>
     </div>
 
     <div class="glass-panel transition-colors">
@@ -209,7 +211,7 @@
         </div>
       </div>
       <p class="text-xs opacity-70 mb-2 text-gray-400">Based on <b>Closed</b> tickets only.</p>
-      <canvas id="barChartSubcategory"></canvas>
+      <div class="relative w-full h-64"><canvas id="barChartSubcategory"></canvas></div>
     </div>
 
     <div class="glass-panel transition-colors">
@@ -226,7 +228,7 @@
         </div>
       </div>
       <p class="text-xs opacity-70 mb-2 text-gray-400">Based on <b>Closed</b> tickets only.</p>
-      <canvas id="barChartPropertyAmt"></canvas>
+      <div class="relative w-full h-64"><canvas id="barChartPropertyAmt"></canvas></div>
     </div>
 
     <div class="glass-panel transition-colors">
@@ -243,15 +245,15 @@
         </div>
       </div>
       <p class="text-xs opacity-70 mb-2 text-gray-400">Most tickets (Open & Closed) in last 3 months. Excludes duplicates.</p>
-      <canvas id="barChartPropertyCount"></canvas>
+      <div class="relative w-full h-64"><canvas id="barChartPropertyCount"></canvas></div>
     </div>
 
     <div class="glass-panel transition-colors">
       <div class="flex justify-between items-start">
         <h3 class="text-lg font-semibold mb-4">Missing Categories</h3>
       </div>
-      <p class="text-xs opacity-70 mb-2 text-gray-400">Tickets with status <b>Closed</b> or <b>Multiple</b> that have missing/empty categories.</p>
-      <canvas id="pieChartMissing"></canvas>
+      <p class="text-xs opacity-70 mb-2 text-gray-400">Tickets with status <b>Closed</b> or <b>Multiple</b> that have missing/empty categories (excluding Not Refunded).</p>
+      <div class="relative w-full h-64"><canvas id="pieChartMissing"></canvas></div>
     </div>
 
   </div>
@@ -289,7 +291,8 @@
               <th class="p-4">Category</th>
               <th class="p-4">Subcategory</th>
               <th class="p-4">Status</th>
-              <th class="p-4">Refund Status</th> <th class="p-4 text-right rounded-tr-lg">Amount</th>
+              <th class="p-4">Refund Status</th> 
+              <th class="p-4 text-right rounded-tr-lg">Amount</th>
             </tr>
           </thead>
           <tbody id="modalTableBody" class="bg-white">
@@ -359,18 +362,18 @@
         date: findIdx(['refund requested at', 'date']),
         country: findIdx(['country', 'market']),
         amount: findIdx(['amount', 'value']),
-        rpCf: findIdx(['rp + cf', 'rental price']), // Added Index for RP + CF
+        rpCf: findIdx(['rp + cf', 'rental price']),
         ticketId: findIdx(['ticket id', 'ticket']),
-        propertyId: findIdx(['property id', 'property']),
         status: findIdx(['status']),
         refundStatus: findIdx(['refund status']),
         category: findIdx(['refund category', 'category']),
-        subcategory: findIdx(['refund subcategory', 'subcategory'])
+        subcategory: findIdx(['refund subcategory', 'subcategory']),
+        propertyId: findIdx(['property id', 'property'])
       };
 
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-      rawData = trackerPayload.rows.map(row => {
+      rawData = trackerPayload.rows.map((row, i) => {
         const dateStr = row[idx.date];
         const dateObj = parseDate(dateStr);
         let statusRaw = row[idx.status] || 'Open';
@@ -384,8 +387,9 @@
           dateDisplay: dateObj ? dateObj.toLocaleDateString() : dateStr,
           country: normalizeCountry(row[idx.country]),
           amount: parseFloat(row[idx.amount] || 0),
-          rpCf: parseFloat(String(row[idx.rpCf] || "0").replace(/,/g, '')) || 0, // Store RP + CF
+          rpCf: parseFloat(String(row[idx.rpCf] || "0").replace(/,/g, '')) || 0,
           ticketId: row[idx.ticketId],
+          ticketLink: trackerPayload.ticketLinks ? trackerPayload.ticketLinks[i] : null,
           category: row[idx.category],
           subcategory: row[idx.subcategory],
           propertyId: row[idx.propertyId],
@@ -438,7 +442,7 @@
     function populateFilters() {
       const yearSelect = document.getElementById('yearFilter');
       const uniqueYears = [...new Set(rawData.map(d => d.yearStr))].filter(y => y !== 'Unknown');
-      uniqueYears.sort((a, b) => b - a); // Descending order
+      uniqueYears.sort((a, b) => b - a); 
       
       yearSelect.innerHTML = '';
       
@@ -455,7 +459,7 @@
       });
 
       if (uniqueYears.length > 0) {
-          yearSelect.value = uniqueYears[0]; // Default to most recent year
+          yearSelect.value = uniqueYears[0]; 
       }
       
       updateMonthDropdown();
@@ -474,7 +478,7 @@
       const uniqueMonths = [...new Set(filteredData.map(d => d.monthOnlyStr))].filter(m => m !== 'Unknown');
       
       const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      uniqueMonths.sort((a, b) => monthOrder.indexOf(b) - monthOrder.indexOf(a)); // Descending order
+      uniqueMonths.sort((a, b) => monthOrder.indexOf(b) - monthOrder.indexOf(a));
       
       monthSelect.innerHTML = '';
       
@@ -493,7 +497,7 @@
       if (uniqueMonths.includes(currentMonthSelection)) {
           monthSelect.value = currentMonthSelection;
       } else {
-          monthSelect.value = 'All'; // Default to All if previous selection is unavailable
+          monthSelect.value = 'All'; 
       }
     }
 
@@ -532,15 +536,22 @@
           
           const statusClass = row.status.toLowerCase().includes('closed') ? 'pill-closed' : 'pill-open';
           
+          // Ticket Hyperlink implementation
+          let ticketHtml = row.ticketId || '-';
+          if (row.ticketLink) {
+            ticketHtml = `<a href="${row.ticketLink}" target="_blank" class="text-blue-600 underline hover:text-blue-800">${row.ticketId}</a>`;
+          }
+          
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td class="p-4 whitespace-nowrap">${row.dateDisplay}</td>
-            <td class="p-4 font-mono text-xs bg-gray-50 rounded text-gray-600">${row.ticketId || '-'}</td>
+            <td class="p-4 font-mono text-xs bg-gray-50 rounded text-gray-600">${ticketHtml}</td>
             <td class="p-4">${row.propertyId || '-'}</td>
             <td class="p-4">${row.category || '-'}</td>
             <td class="p-4">${row.subcategory || '-'}</td>
             <td class="p-4"><span class="px-2 py-1 rounded text-xs ${statusClass}">${row.status}</span></td>
-            <td class="p-4">${row.refundStatus || '-'}</td> <td class="p-4 text-right font-bold text-gray-700">${amtStr}</td>
+            <td class="p-4">${row.refundStatus || '-'}</td>
+            <td class="p-4 text-right font-bold text-gray-700">${amtStr}</td>
           `;
           tbody.appendChild(tr);
         });
@@ -613,7 +624,6 @@
       if (e.target === this) closeModal();
     });
 
-    // Custom Ratio Chart logic
     function setRatioChartFilter(market) {
       ratioChartFilter = market;
       document.querySelectorAll('.ratio-filter-All, .ratio-filter-Portugal, .ratio-filter-France, .ratio-filter-UK, .ratio-filter-Ireland, .ratio-filter-Dubai, .ratio-filter-Spain').forEach(btn => {
@@ -633,7 +643,6 @@
       let bgColors = [];
 
       if (ratioChartFilter === 'All') {
-        // Show 1 top property per market
         markets.forEach((market, idx) => {
           const mData = ratioChartDataStore.filter(d => d.country === market);
           let topProp = 'N/A';
@@ -658,7 +667,6 @@
           bgColors.push(marketColors[idx]);
         });
       } else {
-        // Show top 6 properties for selected market
         const mData = ratioChartDataStore.filter(d => d.country === ratioChartFilter);
         const groups = {};
         mData.forEach(d => {
@@ -676,7 +684,7 @@
             market: ratioChartFilter
           }))
           .sort((a, b) => b.val - a.val)
-          .slice(0, 6); // Limit to top 6
+          .slice(0, 6);
 
         displayLabels = sorted.map((item, idx) => `${idx + 1}. ${item.name}`);
         displayData = sorted;
@@ -785,16 +793,14 @@
       const selectedYear = document.getElementById('yearFilter').value;
       const selectedMonth = document.getElementById('monthFilter').value;
       
-      // Filter for standard charts based on both dropdowns
       let monthlyData = rawData.filter(d => {
          const matchYear = selectedYear === 'All' ? true : d.yearStr === selectedYear;
          const matchMonth = selectedMonth === 'All' ? true : d.monthOnlyStr === selectedMonth;
          return matchYear && matchMonth;
       });
 
-      let rollingData = monthlyData; // Fallback 
+      let rollingData = monthlyData; 
       
-      // Rolling Logic: if a specific month AND year are chosen, generate rolling data window
       if (selectedMonth !== 'All' && selectedYear !== 'All') {
         const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const monthIdx = monthOrder.indexOf(selectedMonth);
@@ -826,7 +832,6 @@
       
       allMonths.sort((a, b) => new Date(a) - new Date(b));
 
-      // Filter months exclusively by the main Year dropdown. Ignores the main Month dropdown entirely.
       const filteredMonths = selectedYear === 'All' ? allMonths : allMonths.filter(m => m.endsWith(selectedYear));
 
       let matrixData = {};
@@ -993,7 +998,6 @@
 
       const closedData = monthlyData.filter(d => d.status.toLowerCase().includes('closed'));
 
-      // Populate Ratio Chart Data
       ratioChartDataStore = closedData;
       renderRatioChart();
 
@@ -1046,7 +1050,12 @@
       chartData['barChartPropertyCount'] = { winnerData: topPropCount, type: 'count', filterField: 'propertyId', sourceData: rollingNonDuplicate };
       renderSpecificChart('barChartPropertyCount', topPropCount, 'count', 'propertyId', rollingNonDuplicate);
 
-      const closedOrMultipleData = monthlyData.filter(d => d.status.toLowerCase().includes('closed') || d.status.toLowerCase().includes('multiple'));
+      // Exclude "Not Refunded" logic is executed here
+      const closedOrMultipleData = monthlyData.filter(d => 
+        (d.status.toLowerCase().includes('closed') || d.status.toLowerCase().includes('multiple')) &&
+        (!d.refundStatus || d.refundStatus.toLowerCase().trim() !== 'not refunded')
+      );
+      
       const missingCountsByMarket = markets.map(m => {
         return closedOrMultipleData.filter(d => d.country === m && (!d.category || d.category.trim() === '')).length;
       });
