@@ -57,6 +57,7 @@
         .chart-card { background-color: var(--card-bg); padding: 16px; border-radius: var(--border-radius); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); min-height: 350px; }
         .span-2 { grid-column: span 2; }
         .span-1 { grid-column: span 1; }
+        .span-3 { grid-column: span 3; }
 
         /* --- Floating Bottom Drawer --- */
         .case-drawer { position: fixed; bottom: 0; left: 250px; width: calc(100% - 250px); height: 450px; background-color: white; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); border-top-left-radius: 16px; border-top-right-radius: 16px; z-index: 900; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s, width 0.3s; display: flex; flex-direction: column; }
@@ -86,7 +87,7 @@
         .reset-btn { background: none; border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: 500; display: flex; align-items: center; gap: 6px; color: #666; background-color: white; transition: 0.2s;}
         .reset-btn:hover { background-color: var(--body-bg); color: var(--primary-bg); border-color: var(--primary-bg); }
 
-        @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } .span-2 { grid-column: span 2; } }
+        @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } .span-2, .span-3 { grid-column: span 2; } }
         @media (max-width: 768px) { .dashboard-grid { display: flex; flex-direction: column; } }
 
         .loader-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; }
@@ -130,6 +131,13 @@
                         <option value="10">October</option><option value="11">November</option><option value="12">December</option>
                     </select>
 
+                    <label style="font-size: 0.85em; font-weight: 600; color: #888; margin-left: 10px;">Source:</label>
+                    <select id="global-source" onchange="applyGlobalFilter()">
+                        <option value="All">All Sources</option>
+                        <option value="Google">Google</option>
+                        <option value="Trustpilot">Trustpilot</option>
+                    </select>
+
                     <button class="reset-btn" onclick="resetDashboard()" title="Reset all filters and selection" style="margin-left: 10px;">
                         <i class="fa-solid fa-rotate-left"></i> Reset Dashboard
                     </button>
@@ -147,15 +155,19 @@
             <div class="dashboard-grid">
                 <div class="chart-card span-2"><div id="chart1"></div></div>
                 <div class="chart-card span-1"><div id="chartStatus"></div></div>
+                
                 <div class="chart-card span-1"><div id="chartCategory"></div></div>
-                <div class="chart-card span-1"><div id="chartSource"></div></div>
+                <div class="chart-card span-2"><div id="chartSource"></div></div>
+                
+                <div class="chart-card span-2"><div id="chartParty"></div></div>
                 <div class="chart-card span-1">
                     <div id="chartRepeatedProps"></div>
                     <p style="font-size: 0.75em; color: #888; margin-top: -5px; text-align: center; font-style: italic;">
                         Note: a count of 1 may indicate spam reviews.
                     </p>
                 </div>
-                <div class="chart-card span-3" style="grid-column: span 3;"><div id="chartHeatmap"></div></div>
+                
+                <div class="chart-card span-3"><div id="chartHeatmap"></div></div>
             </div>
         </div>
 
@@ -208,6 +220,7 @@
                     <tr>
                         <th style="width:130px;">ID</th>
                         <th style="width:100px;">Market</th>
+                        <th style="width:100px;">Source</th>
                         <th style="width:130px;">Reservation ID</th>
                         <th>Summary</th>
                         <th style="width:150px;">Category</th>
@@ -222,7 +235,7 @@
     const COLORS = { DEFAULT_PALETTE: ['#8BA8E3', '#F58F79', '#DBDFEC', '#9AB6ED', '#FAB0A0'], SINGLE_BAR: '#8BA8E3', HIGHLIGHT: '#F58F79', DIMMED: '#DBDFEC' };
     const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     
-    let chartMarket, chartStatus, chartCategory, chartSource, chartRepeated;
+    let chartMarket, chartStatus, chartCategory, chartSource, chartRepeated, chartParty;
     let chartDataStore = {};
     let fullTableData = []; 
     let currentFilter = null; 
@@ -231,10 +244,10 @@
     let isYearDropdownPopulated = false;
 
     document.addEventListener('DOMContentLoaded', function() {
-        google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData("All", "All");
+        google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData("All", "All", "All");
     });
 
-    // --- UPDATED CSV EXPORT FUNCTION ---
+    // --- CSV EXPORT FUNCTION ---
     function downloadCSV() {
         const dataToDownload = currentFilter ? filterData(fullTableData, currentFilter) : fullTableData;
         
@@ -243,7 +256,6 @@
             return;
         }
 
-        // Expanded Headers matching your primary sheet
         const headers = [
             'Case ID', 'Market', 'Sources', 'Affected Party', 'Reservation ID', 
             'Property ID', 'Review Date', 'Summary', 'Category', 'Subcategory', 
@@ -255,7 +267,6 @@
         csvRows.push(headers.join(','));
 
         for (const row of dataToDownload) {
-            // Map the new values received from the backend
             const values = [
                 row.id || '',
                 row.market || '',
@@ -268,7 +279,7 @@
                 row.category || '',
                 row.subcategory || '',
                 row.flagged || '',
-                row.removedRaw || '', // Keep the exact value from the sheet
+                row.removedRaw || '', 
                 row.duplicateReviews || '',
                 row.refunded || '',
                 row.nextAction || '',
@@ -276,7 +287,6 @@
                 row.pmTicket || ''
             ];
             
-            // Format for CSV strictly
             const escapedValues = values.map(v => {
                 const str = String(v).replace(/"/g, '""'); 
                 return `"${str}"`; 
@@ -335,9 +345,10 @@
     function applyGlobalFilter() {
         const selectedYear = document.getElementById('global-year').value;
         const selectedMonth = document.getElementById('global-month').value;
+        const selectedSource = document.getElementById('global-source').value;
         
         document.getElementById('loader-wrapper').style.display = 'flex';
-        google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData(selectedMonth, selectedYear);
+        google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(showError).getDashboardData(selectedMonth, selectedYear, selectedSource);
     }
 
     function renderResolution(response) {
@@ -488,7 +499,14 @@
             isYearDropdownPopulated = true;
         }
 
-        if (chartMarket) { chartMarket.destroy(); chartStatus.destroy(); chartCategory.destroy(); chartSource.destroy(); chartRepeated.destroy(); }
+        if (chartMarket) { 
+            chartMarket.destroy(); 
+            chartStatus.destroy(); 
+            chartCategory.destroy(); 
+            chartSource.destroy(); 
+            chartRepeated.destroy(); 
+            if(chartParty) chartParty.destroy();
+        }
         
         dashboardStats = data.cards; 
         renderKpiCards(data.cards);
@@ -499,6 +517,7 @@
         chartStatus = renderStatusChart(data.charts.caseStatus);
         chartCategory = renderCategoryChart(data.charts.casesByCategory);
         chartSource = renderSourceChart(data.charts.casesBySource);
+        chartParty = renderPartyChart(data.charts.casesByParty);
         chartRepeated = renderRepeatedPropsChart(data.charts.repeatedProperties);
 
         if (data.charts.categoryHeatmap) { chartHeatmap = renderHeatmapChart(data.charts.categoryHeatmap); }
@@ -519,6 +538,7 @@
             chartStatus.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
             chartSource.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
             chartMarket.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
+            chartParty.updateOptions({ colors: ['#F58F79', '#8BA8E3', '#DBDFEC'] });
         } else if (type === 'ongoing') {
             currentFilter = { type: 'ongoing', value: 'Ongoing' };
         } else if (type === 'removed') {
@@ -557,6 +577,7 @@
             if (filter.type === 'status') return row.status === filter.value;
             if (filter.type === 'market') return row.market === filter.value;
             if (filter.type === 'source') return row.source.includes(filter.value);
+            if (filter.type === 'party') return row.affectedParty === filter.value;
             if (filter.type === 'ongoing') { const s = row.status.toLowerCase(); return s === 'ongoing' || s === 'open'; }
             if (filter.type === 'removed') return row.isRemoved;
             if (filter.type === 'property') return String(row.propertyId) === String(filter.value);
@@ -577,20 +598,24 @@
         const statColors = chartDataStore.caseStatus.labels.map(lbl => lbl === row.status ? COLORS.HIGHLIGHT : COLORS.DIMMED);
         chartStatus.updateOptions({ colors: statColors });
 
-        const rowSources = row.source.split(',').map(s => s.trim());
-        const sourceColors = chartDataStore.casesBySource.labels.map(lbl => rowSources.includes(lbl) ? COLORS.HIGHLIGHT : COLORS.DIMMED);
-        chartSource.updateOptions({ colors: sourceColors });
-
         const marketColors = chartDataStore.marketCasesByMonth.series.map(s => s.name === row.market ? COLORS.HIGHLIGHT : COLORS.DIMMED);
         chartMarket.updateOptions({ colors: marketColors });
+        
+        const rowSources = row.source.split(',').map(s => s.trim());
+        const sourceColors = chartDataStore.casesBySource.series.map(s => rowSources.includes(s.name) ? COLORS.HIGHLIGHT : COLORS.DIMMED);
+        chartSource.updateOptions({ colors: sourceColors });
+        
+        const partyColors = chartDataStore.casesByParty.series.map(s => s.name === row.affectedParty ? COLORS.HIGHLIGHT : COLORS.DIMMED);
+        chartParty.updateOptions({ colors: partyColors });
     }
 
     function resetDashboard() {
         const y = document.getElementById('global-year');
         const m = document.getElementById('global-month');
+        const s = document.getElementById('global-source');
 
-        if(y.value !== "All" || m.value !== "All") {
-            y.value = "All"; m.value = "All";
+        if(y.value !== "All" || m.value !== "All" || s.value !== "All") {
+            y.value = "All"; m.value = "All"; s.value = "All";
             applyGlobalFilter(); 
         } else {
             currentFilter = null; selectedRowId = null; updateFilterBadge(); renderTable(fullTableData);
@@ -598,6 +623,7 @@
             chartStatus.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
             chartSource.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
             chartMarket.updateOptions({ colors: COLORS.DEFAULT_PALETTE });
+            chartParty.updateOptions({ colors: ['#F58F79', '#8BA8E3', '#DBDFEC'] });
         }
     }
 
@@ -606,7 +632,7 @@
         document.getElementById('list-count').innerText = `(${rows.length} cases)`;
         tbody.innerHTML = ''; 
 
-        if (rows.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#888;">No cases match this filter.</td></tr>'; return; }
+        if (rows.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#888;">No cases match this filter.</td></tr>'; return; }
 
         rows.slice(0, 100).forEach(row => {
             const tr = document.createElement('tr');
@@ -617,6 +643,7 @@
             tr.innerHTML = `
                 <td>${linkHtml}</td>
                 <td>${row.market}</td>
+                <td>${row.source || '-'}</td>
                 <td>${row.reservationId || '-'}</td>
                 <td style="white-space: pre-wrap;">${row.summary || '-'}</td>
                 <td>${row.category || '-'}</td>
@@ -651,8 +678,37 @@
     }
 
     function renderSourceChart(data) {
-        const options = { series: data.series, labels: data.labels, chart: { type: 'pie', height: 320, fontFamily: FONT_FAMILY, events: { dataPointSelection: (e, chart, config) => { const idx = config.selectedDataPoints[0][0]; handleChartClick('source', idx !== undefined && idx !== -1 ? config.w.config.labels[idx] : null); } } }, colors: COLORS.DEFAULT_PALETTE, title: { text: 'Incoming Sources', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } }, legend: { position: 'bottom' } };
+        const options = { 
+            series: data.series, 
+            chart: { type: 'bar', height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY, 
+                     events: { dataPointSelection: (e, chart, config) => { const sIdx = config.seriesIndex; if (sIdx !== undefined && sIdx !== -1) handleChartClick('source', config.w.config.series[sIdx].name); } } 
+                   }, 
+            plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 2 } },
+            colors: COLORS.DEFAULT_PALETTE, 
+            title: { text: 'Incoming Sources Over Time', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } }, 
+            dataLabels: { enabled: false }, 
+            xaxis: { categories: data.categories }, 
+            legend: { position: 'top', horizontalAlign: 'right' },
+            tooltip: { shared: true, intersect: false }
+        };
         const chart = new ApexCharts(document.querySelector("#chartSource"), options); chart.render(); return chart;
+    }
+
+    function renderPartyChart(data) {
+        const options = { 
+            series: data.series, 
+            chart: { type: 'bar', height: 320, toolbar: { show: false }, fontFamily: FONT_FAMILY, 
+                     events: { dataPointSelection: (e, chart, config) => { const sIdx = config.seriesIndex; if (sIdx !== undefined && sIdx !== -1) handleChartClick('party', config.w.config.series[sIdx].name); } } 
+                   }, 
+            plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 2 } },
+            colors: ['#F58F79', '#8BA8E3', '#DBDFEC'],
+            title: { text: 'Reviews from Host vs Guest', style: { color: '#8BA8E3', fontSize: '16px', fontWeight: 600 } }, 
+            dataLabels: { enabled: false }, 
+            xaxis: { categories: data.categories }, 
+            legend: { position: 'top', horizontalAlign: 'right' },
+            tooltip: { shared: true, intersect: false }
+        };
+        const chart = new ApexCharts(document.querySelector("#chartParty"), options); chart.render(); return chart;
     }
 
     function renderMarketChart(data) {

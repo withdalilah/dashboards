@@ -71,10 +71,11 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
 }
 
-function getDashboardData(filterMonth, filterYear) {
+function getDashboardData(filterMonth, filterYear, filterSource) {
   filterMonth = filterMonth || "All";
   filterYear = filterYear || "All";
-
+  filterSource = filterSource || "All";
+  
   const SHEET_NAME = "Feedbacks & Review Tracker";
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -95,12 +96,15 @@ function getDashboardData(filterMonth, filterYear) {
     let totalCases = 0;
     let ongoingCases = 0;
     let reviewRemoved = 0;
+    
     const categoryCounts = {};
     const marketCounts = {};
-    const sourceCounts = {};
     const statusCounts = {};
+    
     const marketCasesByMonth = {};
     const categoryCasesByMonth = {}; 
+    const sourceCasesByMonth = {}; 
+    const partyCasesByMonth = {}; 
     
     const propertyCounts = {};
     const propertyRawCounts = {};
@@ -108,29 +112,27 @@ function getDashboardData(filterMonth, filterYear) {
 
     const rawTableData = [];
     const availableYears = new Set();
+    
     data.forEach(row => {
       const reviewDateStr = row[6];
       if (reviewDateStr && reviewDateStr instanceof Date) {
         availableYears.add(reviewDateStr.getFullYear());
       }
     });
-    
+
     data.forEach((row, i) => {
-      const reviewDateStr = row[6]; // Column G (Review Date)
+      const reviewDateStr = row[6]; 
       let rowMonth = null;
       let rowYear = null;
       const category = row[8] || 'Uncategorized'; 
 
+      const sourceRaw = row[2] ? row[2].toString() : 'Unknown';
+      const affectedPartyRaw = row[3] ? row[3].toString() : "";
+      
       let formattedReviewDate = "";
       if (reviewDateStr && reviewDateStr instanceof Date) {
         rowMonth = reviewDateStr.getMonth() + 1; 
         rowYear = reviewDateStr.getFullYear();
-
-        const monthYearHeatmap = `${reviewDateStr.toLocaleString('default', { month: 'short' })} ${reviewDateStr.getFullYear()}`;
-        if (!categoryCasesByMonth[category]) categoryCasesByMonth[category] = {};
-        categoryCasesByMonth[category][monthYearHeatmap] = (categoryCasesByMonth[category][monthYearHeatmap] || 0) + 1;
-        
-        // Format date specifically for CSV Export
         formattedReviewDate = Utilities.formatDate(reviewDateStr, Session.getScriptTimeZone(), "yyyy-MM-dd");
       } else {
         formattedReviewDate = reviewDateStr ? reviewDateStr.toString() : "";
@@ -139,18 +141,17 @@ function getDashboardData(filterMonth, filterYear) {
       // --- FILTERS APPLY HERE ---
       if (filterYear !== "All" && String(rowYear) !== String(filterYear)) return;
       if (filterMonth !== "All" && String(rowMonth) !== String(filterMonth)) return;
+      if (filterSource !== "All" && !sourceRaw.toLowerCase().includes(filterSource.toLowerCase())) return;
 
       totalCases++;
 
       const richText = linkData[i][0];
       const caseUrl = richText ? richText.getLinkUrl() : null;
-
       const caseIdText = row[0];
       const market = row[1] || 'Unknown';
-      const sourceRaw = row[2] ? row[2].toString() : 'Unknown';
-      const affectedParty = row[3] ? row[3].toString() : "";
-      const reservationId = row[4] ? row[4].toString() : "";
       
+      const affectedParty = affectedPartyRaw.trim();
+      const reservationId = row[4] ? row[4].toString() : "";
       const rawProp = row[5];
       const propertyId = (rawProp !== null && rawProp !== undefined && rawProp !== "") ? rawProp.toString().trim() : "Unknown";
       const summary = row[7] || "";
@@ -169,7 +170,26 @@ function getDashboardData(filterMonth, filterYear) {
 
       let monthYearLabel = "Unknown Date";
       if (reviewDateStr && reviewDateStr instanceof Date) {
+        const monthYearHeatmap = `${reviewDateStr.toLocaleString('default', { month: 'short' })} ${reviewDateStr.getFullYear()}`;
         monthYearLabel = `${reviewDateStr.toLocaleString('default', { month: 'long' })} ${reviewDateStr.getFullYear()}`;
+        
+        if (!categoryCasesByMonth[category]) categoryCasesByMonth[category] = {};
+        categoryCasesByMonth[category][monthYearHeatmap] = (categoryCasesByMonth[category][monthYearHeatmap] || 0) + 1;
+
+        if (!marketCasesByMonth[market]) marketCasesByMonth[market] = {};
+        marketCasesByMonth[market][monthYearHeatmap] = (marketCasesByMonth[market][monthYearHeatmap] || 0) + 1;
+
+        const splitSources = sourceRaw.split(',').map(s => s.trim());
+        splitSources.forEach(src => {
+            if (src) {
+                if (!sourceCasesByMonth[src]) sourceCasesByMonth[src] = {};
+                sourceCasesByMonth[src][monthYearHeatmap] = (sourceCasesByMonth[src][monthYearHeatmap] || 0) + 1;
+            }
+        });
+
+        const party = affectedParty || "Unknown";
+        if (!partyCasesByMonth[party]) partyCasesByMonth[party] = {};
+        partyCasesByMonth[party][monthYearHeatmap] = (partyCasesByMonth[party][monthYearHeatmap] || 0) + 1;
       }
 
       rawTableData.push({
@@ -186,8 +206,7 @@ function getDashboardData(filterMonth, filterYear) {
         monthYear: monthYearLabel,
         reservationId: reservationId, 
         duplicateReviews: duplicateReviews,
-        // --- NEW DATA EXTRACTED FOR CSV EXPORT ---
-        affectedParty: affectedParty,
+        affectedParty: affectedPartyRaw,
         reviewDate: formattedReviewDate,
         subcategory: row[9] ? row[9].toString() : "",
         flagged: row[10] ? row[10].toString() : "",
@@ -217,19 +236,8 @@ function getDashboardData(filterMonth, filterYear) {
       statusCounts[statusRaw] = (statusCounts[statusRaw] || 0) + 1;
 
       if (isRemoved) reviewRemoved++;
-      
-      if (reviewDateStr && reviewDateStr instanceof Date) {
-        const monthYear = `${reviewDateStr.toLocaleString('default', { month: 'short' })} ${reviewDateStr.getFullYear()}`;
-        if (!marketCasesByMonth[market]) marketCasesByMonth[market] = {};
-        marketCasesByMonth[market][monthYear] = (marketCasesByMonth[market][monthYear] || 0) + 1;
-      }
-
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
       marketCounts[market] = (marketCounts[market] || 0) + 1;
-      const splitSources = sourceRaw.split(',').map(s => s.trim());
-      splitSources.forEach(src => {
-        if (src) sourceCounts[src] = (sourceCounts[src] || 0) + 1;
-      });
     });
 
     const repeatedProperties = Object.entries(propertyCounts)
@@ -241,9 +249,16 @@ function getDashboardData(filterMonth, filterYear) {
       categories: repeatedProperties.map(item => item[0]),
       series: [{ name: "Repeats", data: repeatedProperties.map(item => item[1]) }]
     };
-    
+
     const findTopItem = (counts) => Object.keys(counts).length ? Object.entries(counts).reduce((a, b) => a[1] > b[1] ? a : b)[0] : 'N/A';
-    const allMonths = [...new Set(Object.values(marketCasesByMonth).flatMap(Object.keys))].sort((a, b) => new Date(a) - new Date(b));
+    
+    // Sort logic for all chronological months 
+    const allMonths = [...new Set([
+        ...Object.values(marketCasesByMonth).flatMap(Object.keys),
+        ...Object.values(sourceCasesByMonth).flatMap(Object.keys),
+        ...Object.values(partyCasesByMonth).flatMap(Object.keys)
+    ])].sort((a, b) => new Date(a) - new Date(b));
+    
     const allHeatmapMonths = [...new Set(Object.values(categoryCasesByMonth).flatMap(Object.keys))].sort((a, b) => new Date(a) - new Date(b));
     
     const marketSeries = Object.keys(marketCasesByMonth).map(mkt => {
@@ -252,6 +267,14 @@ function getDashboardData(filterMonth, filterYear) {
     
     const heatmapSeries = Object.keys(categoryCasesByMonth).map(cat => {
       return { name: cat, data: allHeatmapMonths.map(month => categoryCasesByMonth[cat][month] || 0) };
+    });
+
+    const sourceSeries = Object.keys(sourceCasesByMonth).map(src => {
+      return { name: src, data: allMonths.map(month => sourceCasesByMonth[src][month] || 0) };
+    });
+
+    const partySeries = Object.keys(partyCasesByMonth).map(pty => {
+      return { name: pty, data: allMonths.map(month => partyCasesByMonth[pty][month] || 0) };
     });
     
     const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
@@ -266,7 +289,8 @@ function getDashboardData(filterMonth, filterYear) {
       },
       charts: {
         marketCasesByMonth: { series: marketSeries, categories: allMonths },
-        casesBySource: { labels: Object.keys(sourceCounts), series: Object.values(sourceCounts) },
+        casesBySource: { series: sourceSeries, categories: allMonths },
+        casesByParty: { series: partySeries, categories: allMonths },
         casesByCategory: { categories: sortedCategories.map(i => i[0]), series: [{ name: 'Cases', data: sortedCategories.map(i => i[1]) }] },
         caseStatus: { labels: Object.keys(statusCounts), series: Object.values(statusCounts) },
         repeatedProperties: repeatedPropertyData,
@@ -300,7 +324,6 @@ function getResolutionInsightsData() {
     const processedDefs = [];
     let currentStrategy = "Uncategorized";
     let currentStatus = "";
-
     for (let i = 0; i < defData.length; i++) {
       const row = defData[i];
       if (!row.join('').trim()) continue;
