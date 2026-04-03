@@ -348,3 +348,17 @@ function getResolutionInsightsData() {
     return { error: e.message };
   }
 }
+
+function getAnalyticsData() {
+  const SHEET_NAME = "Analytic";
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    if (!sheet) throw new Error(`Sheet "${SHEET_NAME}" not found.`);
+
+    const data = sheet.getDataRange().getDisplayValues();
+    return { data: data };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
