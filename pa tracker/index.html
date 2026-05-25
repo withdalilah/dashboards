@@ -4,17 +4,79 @@
     <base target="_top">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chota@latest">
     <style>
-      body { padding: 20px; background: #f9f9f9; font-family: sans-serif; }
-      .container { max-width: 950px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-      .tab-btn { margin-right: 5px; cursor: pointer; background: #eee; color: #333; }
-      .tab-btn.active { background-color: #0070f3; color: white; font-weight: bold; }
-      .row-card { border-bottom: 1px solid #eee; padding: 15px 0; }
-      .save-btn { background: #00d1b2; color: white; border: none; padding: 0 20px; height: 100%; cursor: pointer;}
-      .loading { color: #666; font-style: italic; }
-      .filter-bar { background: #f1f1f1; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-      select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; min-width: 120px; }
-      .stats-banner { background: #e3f2fd; color: #0d47a1; padding: 12px 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bbdefb; display: flex; justify-content: space-between; align-items: center; }
-      .compliance-pill { background: #0d47a1; color: white; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 14px; }
+      body { 
+        padding: 20px; 
+        background: #F3F4E3; /* Palette: Light beige/off-white */
+        font-family: sans-serif; 
+      }
+      .container { 
+        max-width: 950px; 
+        background: white; 
+        padding: 30px; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+      }
+      .tab-btn { 
+        margin-right: 5px; 
+        cursor: pointer; 
+        background: #DBDFEC; /* Palette: Light grayish-blue for inactive tabs */
+        color: #333; 
+        border: none;
+      }
+      .tab-btn.active { 
+        background-color: #8BA8E3; /* Palette: Blue for active tab */
+        color: white; 
+        font-weight: bold; 
+      }
+      .row-card { 
+        border-bottom: 1px solid #DBDFEC; /* Palette */
+        padding: 15px 0; 
+      }
+      .save-btn { 
+        background: #F58F79; /* Palette: Coral for action button */
+        color: white; 
+        border: none; 
+        padding: 0 20px; 
+        height: 100%; 
+        cursor: pointer;
+      }
+      .loading { 
+        color: #666; 
+        font-style: italic; 
+      }
+      .filter-bar { 
+        background: #FFEAE5; /* Palette: Light peach */
+        padding: 15px; 
+        border-radius: 6px; 
+        margin-bottom: 20px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+      }
+      select { 
+        padding: 8px; 
+        border-radius: 4px; 
+        border: 1px solid #DBDFEC; /* Palette */
+        font-size: 14px; 
+        min-width: 120px; 
+      }
+      .stats-banner { 
+        background: #DBDFEC; /* Palette */
+        color: #333; 
+        padding: 12px 15px; 
+        border-radius: 6px; 
+        margin-bottom: 20px; 
+        border: 1px solid #8BA8E3; /* Palette */
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+      }
+      .compliance-pill { 
+        padding: 6px 12px; 
+        border-radius: 12px; 
+        font-weight: bold; 
+        font-size: 14px; 
+      }
     </style>
   </head>
   <body>
@@ -99,16 +161,26 @@
         if (totalCount > 0) {
           complianceRate = ((totalCount - actionRequired) / totalCount) * 100;
         }
-        var formattedRate = complianceRate.toFixed(2) + "%"; // Formats to 2 decimal places like 57.78%
+        var formattedRate = complianceRate.toFixed(2) + "%"; 
         
-        // UPDATED: The summary banner wording and compliance pill
+        // --- COMPLIANCE PILL COLOR LOGIC ---
+        var pillBgColor = "#F44336"; // Default: Red (49% and below)
+        var pillTextColor = "white";
+        
+        if (complianceRate >= 80) {
+          pillBgColor = "#4CAF50"; // Green (Healthy)
+        } else if (complianceRate >= 50) {
+          pillBgColor = "#FFC107"; // Yellow (Warning)
+          pillTextColor = "black"; // Dark text for better contrast against yellow
+        }
+
         var html = '<div class="stats-banner">' + 
                      '<span>📊 <strong>Total cancellations</strong> in ' + currentCountry + ' for Month ' + currentMonth + ': <strong>' + totalCount + '</strong> (Action required: ' + actionRequired + ')</span>' +
-                     '<span class="compliance-pill">Compliance Rate: ' + formattedRate + '</span>' +
+                     '<span class="compliance-pill" style="background-color: ' + pillBgColor + '; color: ' + pillTextColor + ';">Compliance Rate: ' + formattedRate + '</span>' +
                    '</div>';
         
         if (rows.length === 0) {
-          html += '<p style="color: green; font-weight: bold; padding: 20px 0;">🎉 Amazing! No non-compliant rows found for this market in Month ' + currentMonth + '.</p>';
+          html += '<p style="color: #8BA8E3; font-weight: bold; padding: 20px 0;">🎉 Amazing! No non-compliant rows found for this market in Month ' + currentMonth + '.</p>';
         } else {
           rows.forEach(function(row) {
             html += '<div class="row-card">' +
@@ -132,20 +204,20 @@
         google.script.run
           .withSuccessHandler(function(response) {
             btn.innerText = "Saved! ✓";
-            btn.style.backgroundColor = "#48c774";
+            btn.style.backgroundColor = "#8BA8E3"; // Uses palette Blue for success state
             setTimeout(function() {
               btn.innerText = "Save";
-              btn.style.backgroundColor = "#00d1b2";
+              btn.style.backgroundColor = "#F58F79"; // Reverts to palette Coral
               btn.disabled = false;
             }, 2000);
           })
           .withFailureHandler(function(error) {
             btn.innerText = "Error!";
-            btn.style.backgroundColor = "#f14668";
+            btn.style.backgroundColor = "#333"; 
             alert("Failed to save: " + error.message);
             setTimeout(function() {
               btn.innerText = "Try Again";
-              btn.style.backgroundColor = "#00d1b2";
+              btn.style.backgroundColor = "#F58F79"; // Reverts to palette Coral
               btn.disabled = false;
             }, 3000);
           })
