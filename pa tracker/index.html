@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chota@latest">
+    <style>
+      body { padding: 20px; background: #f9f9f9; }
+      .container { max-width: 900px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+      .tab-btn { margin-right: 5px; cursor: pointer; }
+      .tab-btn.active { background-color: #0070f3; color: white; }
+      .row-card { border-bottom: 1px solid #eee; padding: 15px 0; }
+      .save-btn { background: #00d1b2; color: white; }
+      .loading { color: #666; font-style: italic; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>⚠️ PA Non-Compliance Weekly Log</h2>
+      <p>Select your country tab to update your justifications. Changes sync directly to the master sheet.</p>
+      
+      <div class="row">
+        <button class="button tab-btn active" onclick="switchCountry(this, 'United Kingdom')">UK</button>
+        <button class="button tab-btn" onclick="switchCountry(this, 'Spain')">Spain</button>
+        <button class="button tab-btn" onclick="switchCountry(this, 'Portugal')">Portugal</button>
+        <button class="button tab-btn" onclick="switchCountry(this, 'Dubai')">Dubai</button>
+        <button class="button tab-btn" onclick="switchCountry(this, 'France')">France</button>
+      </div>
+      
+      <hr>
+      
+      <div id="content">Loading items...</div>
+    </div>
+
+    <script>
+      // Load UK data automatically when first opening the page
+      window.onload = function() {
+        loadData('United Kingdom');
+      };
+
+      function switchCountry(btn, country) {
+        // Handle tab switching styling
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        document.getElementById('content').innerHTML = '<p class="loading">Fetching non-compliant rows for ' + country + '...</p>';
+        loadData(country);
+      }
+
+      function loadData(country) {
+        google.script.run.withSuccessHandler(renderRows).getDataForCountry(country);
+      }
+
+      function renderRows(rows) {
+        var html = '';
+        if (rows.length === 0) {
+          html = '<p style="color: green; font-weight: bold;">🎉 Amazing! No non-compliant rows found for this market.</p>';
+        } else {
+          rows.forEach(function(row) {
+            html += '<div class="row-card">' +
+                      '<strong>Reservation ID: ' + row.resId + '</strong><br>' +
+                      '<small>' + row.details + '</small>' +
+                      '<div class="is-flex" style="margin-top: 10px;">' +
+                        '<input type="text" style="margin-right: 10px;" id="input-' + row.rowNum + '" value="' + row.currentReason + '" placeholder="Type reason here..."> ' +
+                        '<button class="button save-btn" onclick="updateRow(' + row.rowNum + ', this)">Save</button>' +
+                      '</div>' +
+                    '</div>';
+          });
+        }
+        document.getElementById('content').innerHTML = html;
+      }
+
+      function updateRow(rowNum, btn) {
+        var text = document.getElementById('input-' + rowNum).value;
+        btn.innerText = "Saving...";
+        btn.disabled = true;
+        
+        google.script.run.withSuccessHandler(function(response) {
+          btn.innerText = "Saved! ✓";
+          btn.style.backgroundColor = "#48c774";
+          setTimeout(function() {
+            btn.innerText = "Save";
+            btn.style.backgroundColor = "#00d1b2";
+            btn.disabled = false;
+          }, 2000);
+        }).saveReason(rowNum, text);
+      }
+    </script>
+  </body>
+</html>
