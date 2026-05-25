@@ -28,11 +28,17 @@ function getDataForCountryAndMonth(countryName, selectedMonth) {
   var data = sheet.getDataRange().getValues();
   var headers = data[0];
   
+  // Find all required columns dynamically
   var resIdIdx = headers.indexOf("reservation_id");
   var countryIdx = headers.indexOf("country");
   var complianceIdx = headers.indexOf("PA Compliance");
   var monthIdx = headers.indexOf("Month");
-  var noteIdx = headers.indexOf("Note from OS"); 
+  var noteIdx = headers.indexOf("Note from OS");
+  var resultIdx = headers.indexOf("result"); // <--- ADDED: Looks for Column O
+  
+  // Best practice: Find Property ID and Reason dynamically too, just in case columns shift
+  var propIdIdx = headers.indexOf("property_id"); 
+  var reasonIdx = headers.indexOf("reason"); 
   
   var filteredData = [];
   var totalReservationsInMonth = 0;
@@ -41,24 +47,28 @@ function getDataForCountryAndMonth(countryName, selectedMonth) {
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     
-    // Check if it belongs to the selected country and month
     if (row[countryIdx].toString().toLowerCase() === countryName.toLowerCase() && parseInt(row[monthIdx], 10) === monthNum) {
       
-      totalReservationsInMonth++; // Count total reservations for this market/month
+      totalReservationsInMonth++; 
       
-      // If it is ALSO non-compliant, add it to our list
       if (row[complianceIdx] === "not comply") {
+        
+        // Grab values securely
+        var prop = propIdIdx > -1 ? row[propIdIdx] : row[0];
+        var rsn = reasonIdx > -1 ? row[reasonIdx] : row[3];
+        var resResult = resultIdx > -1 ? row[resultIdx] : "N/A"; // <--- Grab the result
+        
         filteredData.push({
           rowNum: i + 1,
           resId: row[resIdIdx],
-          details: "Property: " + row[0] + " | Reason: " + row[3], 
+          // ADDED: The result text is now appended to the details display
+          details: "Property: " + prop + " | Reason: " + rsn + " | Result: " + resResult, 
           currentReason: row[noteIdx] || "" 
         });
       }
     }
   }
   
-  // Return BOTH the list of bad rows AND the total count
   return {
     rows: filteredData,
     totalCount: totalReservationsInMonth
@@ -68,15 +78,13 @@ function getDataForCountryAndMonth(countryName, selectedMonth) {
 function saveReason(rowNum, reasonText) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("PA Charge report");
   
-  // FIXED: Correct way to get headers in Apps Script
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]; 
   var noteColIdx = headers.indexOf("Note from OS") + 1; 
   
-  if (noteColIdx === 0) { noteColIdx = 25; } // 25 = Column Y
+  if (noteColIdx === 0) { noteColIdx = 25; } 
   
   sheet.getRange(rowNum, noteColIdx).setValue(reasonText);
   
-  // Forces Google to write to the sheet immediately before returning success
   SpreadsheetApp.flush(); 
   
   return "Saved successfully!";
