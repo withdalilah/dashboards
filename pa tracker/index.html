@@ -4,63 +4,106 @@
     <base target="_top">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chota@latest">
     <style>
-      body { padding: 20px; background: #f9f9f9; }
-      .container { max-width: 900px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-      .tab-btn { margin-right: 5px; cursor: pointer; }
-      .tab-btn.active { background-color: #0070f3; color: white; }
+      body { padding: 20px; background: #f9f9f9; font-family: sans-serif; }
+      .container { max-width: 950px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+      .tab-btn { margin-right: 5px; cursor: pointer; background: #eee; color: #333; }
+      .tab-btn.active { background-color: #0070f3; color: white; font-weight: bold; }
       .row-card { border-bottom: 1px solid #eee; padding: 15px 0; }
-      .save-btn { background: #00d1b2; color: white; }
+      .save-btn { background: #00d1b2; color: white; border: none; padding: 0 20px; height: 100%; cursor: pointer;}
       .loading { color: #666; font-style: italic; }
+      .filter-bar { background: #f1f1f1; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+      select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; min-width: 120px; }
+      .stats-banner { background: #e3f2fd; color: #0d47a1; padding: 12px 15px; border-radius: 6px; font-weight: bold; margin-bottom: 20px; border: 1px solid #bbdefb; }
     </style>
   </head>
   <body>
     <div class="container">
       <h2>⚠️ PA Non-Compliance Weekly Log</h2>
-      <p>Select your country tab to update your justifications. Changes sync directly to the master sheet.</p>
+      <p>Select your country tab and month to update justifications. Notes sync directly to the <strong>Note from OS</strong> column.</p>
       
-      <div class="row">
-        <button class="button tab-btn active" onclick="switchCountry(this, 'United Kingdom')">UK</button>
-        <button class="button tab-btn" onclick="switchCountry(this, 'Spain')">Spain</button>
-        <button class="button tab-btn" onclick="switchCountry(this, 'Portugal')">Portugal</button>
-        <button class="button tab-btn" onclick="switchCountry(this, 'Dubai')">Dubai</button>
-        <button class="button tab-btn" onclick="switchCountry(this, 'France')">France</button>
+      <div class="filter-bar">
+        <div id="tabs">
+          <button class="button tab-btn active" onclick="switchCountry(this, 'United Kingdom')">UK</button>
+          <button class="button tab-btn" onclick="switchCountry(this, 'Spain')">Spain</button>
+          <button class="button tab-btn" onclick="switchCountry(this, 'Portugal')">Portugal</button>
+          <button class="button tab-btn" onclick="switchCountry(this, 'Dubai')">Dubai</button>
+          <button class="button tab-btn" onclick="switchCountry(this, 'France')">France</button>
+        </div>
+        
+        <div>
+          <label style="margin-right: 8px; font-weight: bold;">Filter by Month: </label>
+          <select id="monthSelect" onchange="onMonthChange()">
+            <option value="">Loading...</option>
+          </select>
+        </div>
       </div>
       
       <hr>
-      
       <div id="content">Loading items...</div>
     </div>
 
     <script>
-      // Load UK data automatically when first opening the page
+      var currentCountry = 'United Kingdom';
+      var currentMonth = '';
+
       window.onload = function() {
-        loadData('United Kingdom');
+        google.script.run.withSuccessHandler(function(months) {
+          var select = document.getElementById('monthSelect');
+          select.innerHTML = ''; 
+          
+          if (months.length === 0) {
+            select.innerHTML = '<option value="">No Data</option>';
+            document.getElementById('content').innerHTML = '<p>No months found in data.</p>';
+            return;
+          }
+
+          months.forEach(function(m) {
+            var opt = document.createElement('option');
+            opt.value = m;
+            opt.innerHTML = 'Month ' + m;
+            select.appendChild(opt);
+          });
+          
+          select.value = months[months.length - 1];
+          currentMonth = select.value;
+          
+          loadData();
+        }).getAvailableMonths();
       };
 
       function switchCountry(btn, country) {
-        // Handle tab switching styling
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        currentCountry = country;
+        loadData();
+      }
+
+      function onMonthChange() {
+        currentMonth = document.getElementById('monthSelect').value;
+        loadData();
+      }
+
+      function loadData() {
+        document.getElementById('content').innerHTML = '<p class="loading">Fetching data for ' + currentCountry + ' (Month ' + currentMonth + ')...</p>';
+        google.script.run.withSuccessHandler(renderData).getDataForCountryAndMonth(currentCountry, currentMonth);
+      }
+
+      function renderData(data) {
+        var rows = data.rows;
+        var totalCount = data.totalCount;
         
-        document.getElementById('content').innerHTML = '<p class="loading">Fetching non-compliant rows for ' + country + '...</p>';
-        loadData(country);
-      }
-
-      function loadData(country) {
-        google.script.run.withSuccessHandler(renderRows).getDataForCountry(country);
-      }
-
-      function renderRows(rows) {
-        var html = '';
+        // ADDED: The summary banner showing total vs non-compliant
+        var html = '<div class="stats-banner">📊 Total reservations in ' + currentCountry + ' for Month ' + currentMonth + ': ' + totalCount + ' (Action required: ' + rows.length + ')</div>';
+        
         if (rows.length === 0) {
-          html = '<p style="color: green; font-weight: bold;">🎉 Amazing! No non-compliant rows found for this market.</p>';
+          html += '<p style="color: green; font-weight: bold; padding: 20px 0;">🎉 Amazing! No non-compliant rows found for this market in Month ' + currentMonth + '.</p>';
         } else {
           rows.forEach(function(row) {
             html += '<div class="row-card">' +
                       '<strong>Reservation ID: ' + row.resId + '</strong><br>' +
-                      '<small>' + row.details + '</small>' +
-                      '<div class="is-flex" style="margin-top: 10px;">' +
-                        '<input type="text" style="margin-right: 10px;" id="input-' + row.rowNum + '" value="' + row.currentReason + '" placeholder="Type reason here..."> ' +
+                      '<small style="color:#555;">' + row.details + '</small>' +
+                      '<div style="display: flex; margin-top: 10px;">' +
+                        '<input type="text" style="flex: 1; margin-right: 10px; padding: 8px;" id="input-' + row.rowNum + '" value="' + row.currentReason + '" placeholder="Type reason for OS note here..."> ' +
                         '<button class="button save-btn" onclick="updateRow(' + row.rowNum + ', this)">Save</button>' +
                       '</div>' +
                     '</div>';
@@ -74,15 +117,28 @@
         btn.innerText = "Saving...";
         btn.disabled = true;
         
-        google.script.run.withSuccessHandler(function(response) {
-          btn.innerText = "Saved! ✓";
-          btn.style.backgroundColor = "#48c774";
-          setTimeout(function() {
-            btn.innerText = "Save";
-            btn.style.backgroundColor = "#00d1b2";
-            btn.disabled = false;
-          }, 2000);
-        }).saveReason(rowNum, text);
+        // Added Failure Handler to catch any future errors
+        google.script.run
+          .withSuccessHandler(function(response) {
+            btn.innerText = "Saved! ✓";
+            btn.style.backgroundColor = "#48c774";
+            setTimeout(function() {
+              btn.innerText = "Save";
+              btn.style.backgroundColor = "#00d1b2";
+              btn.disabled = false;
+            }, 2000);
+          })
+          .withFailureHandler(function(error) {
+            btn.innerText = "Error!";
+            btn.style.backgroundColor = "#f14668";
+            alert("Failed to save: " + error.message);
+            setTimeout(function() {
+              btn.innerText = "Try Again";
+              btn.style.backgroundColor = "#00d1b2";
+              btn.disabled = false;
+            }, 3000);
+          })
+          .saveReason(rowNum, text);
       }
     </script>
   </body>

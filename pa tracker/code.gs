@@ -5,41 +5,79 @@ function doGet() {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// Fetches rows marked "not comply" for a specific country
-function getDataForCountry(countryName) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("PA Charge report"); // Adjust to your exact tab name
+function getAvailableMonths() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("PA Charge report");
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var monthIdx = headers.indexOf("Month"); 
+  
+  if (monthIdx === -1) return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; 
+  
+  var months = [];
+  for (var i = 1; i < data.length; i++) {
+    var mVal = data[i][monthIdx];
+    if (mVal && months.indexOf(mVal) === -1 && !isNaN(mVal)) {
+      months.push(mVal);
+    }
+  }
+  return months.sort(function(a, b){return a - b});
+}
+
+function getDataForCountryAndMonth(countryName, selectedMonth) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("PA Charge report");
   var data = sheet.getDataRange().getValues();
   var headers = data[0];
   
-  // Find column indexes (0-indexed)
   var resIdIdx = headers.indexOf("reservation_id");
   var countryIdx = headers.indexOf("country");
   var complianceIdx = headers.indexOf("PA Compliance");
-  var reasonIdx = headers.indexOf("Manager Justification"); // Create this column header first!
+  var monthIdx = headers.indexOf("Month");
+  var noteIdx = headers.indexOf("Note from OS"); 
   
   var filteredData = [];
+  var totalReservationsInMonth = 0;
+  var monthNum = parseInt(selectedMonth, 10);
   
-  // Loop through rows (skip header)
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    if (row[complianceIdx] === "not comply" && row[countryIdx].toString().toLowerCase() === countryName.toLowerCase()) {
-      filteredData.push({
-        rowNum: i + 1, // Store exact spreadsheet row number for instant saving
-        resId: row[resIdIdx],
-        details: "Property: " + row[0] + " | Reason: " + row[3], // Customize what info they see
-        currentReason: row[reasonIdx] || ""
-      });
+    
+    // Check if it belongs to the selected country and month
+    if (row[countryIdx].toString().toLowerCase() === countryName.toLowerCase() && parseInt(row[monthIdx], 10) === monthNum) {
+      
+      totalReservationsInMonth++; // Count total reservations for this market/month
+      
+      // If it is ALSO non-compliant, add it to our list
+      if (row[complianceIdx] === "not comply") {
+        filteredData.push({
+          rowNum: i + 1,
+          resId: row[resIdIdx],
+          details: "Property: " + row[0] + " | Reason: " + row[3], 
+          currentReason: row[noteIdx] || "" 
+        });
+      }
     }
   }
-  return filteredData;
+  
+  // Return BOTH the list of bad rows AND the total count
+  return {
+    rows: filteredData,
+    totalCount: totalReservationsInMonth
+  };
 }
 
-// Saves the reason back to the exact row in the heavy sheet
 function saveReason(rowNum, reasonText) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("PA Charge report");
-  var headers = sheet.getRowValues(1);
-  var reasonColIdx = headers.indexOf("Manager Justification") + 1; // 1-indexed for sheets
   
-  sheet.getRange(rowNum, reasonColIdx).setValue(reasonText);
+  // FIXED: Correct way to get headers in Apps Script
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]; 
+  var noteColIdx = headers.indexOf("Note from OS") + 1; 
+  
+  if (noteColIdx === 0) { noteColIdx = 25; } // 25 = Column Y
+  
+  sheet.getRange(rowNum, noteColIdx).setValue(reasonText);
+  
+  // Forces Google to write to the sheet immediately before returning success
+  SpreadsheetApp.flush(); 
+  
   return "Saved successfully!";
 }
